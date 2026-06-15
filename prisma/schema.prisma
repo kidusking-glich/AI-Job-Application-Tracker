@@ -12,12 +12,13 @@ datasource db {
 // Enums
 // ------------------------------
 enum ApplicationStatus {
+  WISHLIST
   APPLIED
-  SCREENING
-  INTERVIEWING
-  OFFERED
+  ASSESSMENT
+  INTERVIEW
+  OFFER
   REJECTED
-  WITHDRAWN
+  ACCEPTED
 }
 
 // ------------------------------
@@ -80,25 +81,41 @@ model Job {
 }
 
 model Application {
-  id               String             @id @default(uuid())
-  status           ApplicationStatus  @default(APPLIED)
+  id               String                   @id @default(uuid())
+  status           ApplicationStatus        @default(WISHLIST)
   notes            String?
-  appliedAt        DateTime           @default(now())
+  appliedAt        DateTime?
   userId           String
   jobId            String
   resumeId         String?
   coverLetterId    String?
-  createdAt        DateTime           @default(now())
-  updatedAt        DateTime           @updatedAt
-  deletedAt        DateTime?          @map("deleted_at") // Soft delete support
+  createdAt        DateTime                 @default(now())
+  updatedAt        DateTime                 @updatedAt
+  deletedAt        DateTime?                @map("deleted_at") // Soft delete support
 
   // Relationships
-  user             User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  job              Job                @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  resume           Resume?            @relation(fields: [resumeId], references: [id], onDelete: SetNull)
-  coverLetter      CoverLetter?       @relation(fields: [coverLetterId], references: [id], onDelete: SetNull)
+  user             User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  job              Job                      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  resume           Resume?                  @relation(fields: [resumeId], references: [id], onDelete: SetNull)
+  coverLetter      CoverLetter?             @relation(fields: [coverLetterId], references: [id], onDelete: SetNull)
+  statusHistory    ApplicationStatusHistory[]
 
   @@map("applications")
+}
+
+model ApplicationStatusHistory {
+  id             String             @id @default(uuid())
+  applicationId  String
+  previousStatus ApplicationStatus?
+  newStatus      ApplicationStatus
+  changedAt      DateTime           @default(now())
+  changedById    String
+  notes          String?
+
+  application    Application        @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  changedBy      User               @relation(fields: [changedById], references: [id], onDelete: Cascade)
+
+  @@map("application_status_history")
 }
 
 model Resume {
