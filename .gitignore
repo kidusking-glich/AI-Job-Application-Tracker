@@ -33,3 +33,6 @@ prisma/migrations/
 
 # Testing
 coverage/
+
+# Uploads
+uploads/
