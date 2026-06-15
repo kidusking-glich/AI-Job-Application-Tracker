@@ -5,8 +5,10 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+  // url      = env("DATABASE_URL")
 }
+
+
 
 // ------------------------------
 // Enums
@@ -26,19 +28,20 @@ enum ApplicationStatus {
 // ------------------------------
 
 model User {
-  id            String          @id @default(uuid())
-  email         String          @unique
+  id            String                  @id @default(uuid())
+  email         String                  @unique
   password      String
   name          String?
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
-  deletedAt     DateTime?       @map("deleted_at") // Soft delete support
+  createdAt     DateTime                @default(now())
+  updatedAt     DateTime                @updatedAt
+  deletedAt     DateTime?               @map("deleted_at") // Soft delete support
 
   // Relationships
   applications  Application[]
   resumes       Resume[]
   coverLetters  CoverLetter[]
   questions     InterviewQuestion[]
+  statusHistory ApplicationStatusHistory[]
 
   @@map("users")
 }
@@ -60,7 +63,7 @@ model Company {
 }
 
 model Job {
-  id             String           @id @default(uuid())
+  id             String                  @id @default(uuid())
   title          String
   description    String?
   location       String?
@@ -69,36 +72,38 @@ model Job {
   postedAt       DateTime?
   postedUrl      String?
   companyId      String
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
-  deletedAt      DateTime?        @map("deleted_at") // Soft delete support
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+  deletedAt      DateTime?               @map("deleted_at") // Soft delete support
 
   // Relationships
-  company        Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  company        Company                 @relation(fields: [companyId], references: [id], onDelete: Cascade)
   applications   Application[]
+  questions      InterviewQuestion[]
 
   @@map("jobs")
 }
 
 model Application {
-  id               String                   @id @default(uuid())
-  status           ApplicationStatus        @default(WISHLIST)
+  id               String                      @id @default(uuid())
+  status           ApplicationStatus           @default(WISHLIST)
   notes            String?
   appliedAt        DateTime?
   userId           String
   jobId            String
   resumeId         String?
   coverLetterId    String?
-  createdAt        DateTime                 @default(now())
-  updatedAt        DateTime                 @updatedAt
-  deletedAt        DateTime?                @map("deleted_at") // Soft delete support
+  createdAt        DateTime                    @default(now())
+  updatedAt        DateTime                    @updatedAt
+  deletedAt        DateTime?                   @map("deleted_at") // Soft delete support
 
   // Relationships
-  user             User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  job              Job                      @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  resume           Resume?                  @relation(fields: [resumeId], references: [id], onDelete: SetNull)
-  coverLetter      CoverLetter?             @relation(fields: [coverLetterId], references: [id], onDelete: SetNull)
+  user             User                        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  job              Job                         @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  resume           Resume?                     @relation(fields: [resumeId], references: [id], onDelete: SetNull)
+  coverLetter      CoverLetter?                @relation(fields: [coverLetterId], references: [id], onDelete: SetNull)
   statusHistory    ApplicationStatusHistory[]
+  questions        InterviewQuestion[]
 
   @@map("applications")
 }

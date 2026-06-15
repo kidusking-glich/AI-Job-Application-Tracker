@@ -16,12 +16,12 @@ import {
   ApplicationStatusHistory,
 } from '@prisma/client';
 
-interface ApplicationWithRelations extends Application {
+export interface ApplicationWithRelations extends Application {
   job: Job & { company: Company };
   statusHistory: ApplicationStatusHistory[];
 }
 
-interface PaginatedApplications {
+export interface PaginatedApplications {
   data: ApplicationWithRelations[];
   total: number;
   page: number;
@@ -29,7 +29,7 @@ interface PaginatedApplications {
   totalPages: number;
 }
 
-interface ApplicationStatistics {
+export interface ApplicationStatistics {
   total: number;
   byStatus: Record<ApplicationStatus, number>;
 }
@@ -224,7 +224,10 @@ export class ApplicationsService {
   async getStatistics(userId: string): Promise<ApplicationStatistics> {
     // Initialize all statuses with 0
     const initialStatusCounts = Object.values(ApplicationStatus).reduce(
-      (acc, status) => ({ ...acc, [status]: 0 }),
+      (acc, status) => {
+        acc[status] = 0;
+        return acc;
+      },
       {} as Record<ApplicationStatus, number>,
     );
 

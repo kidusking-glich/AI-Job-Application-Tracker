@@ -6,11 +6,11 @@ import { UpdateJobDto } from './dto/update-job.dto';
 import { QueryJobDto } from './dto/query-job.dto';
 import { Job, Company } from '@prisma/client';
 
-interface JobWithCompany extends Job {
+export interface JobWithCompany extends Job {
   company: Company;
 }
 
-interface PaginatedJobs {
+export interface PaginatedJobs {
   data: JobWithCompany[];
   total: number;
   page: number;
@@ -58,8 +58,8 @@ export class JobsService {
 
     if (search) {
       where.OR = [
-        { title: { contains: search, mode: 'insensitive' },
-        { description: { contains: search, mode: 'insensitive' },
+        { title: { contains: search, mode: 'insensitive' } },
+        { description: { contains: search, mode: 'insensitive' } },
       ];
     }
 
@@ -107,7 +107,7 @@ export class JobsService {
   }
 
   async update(id: string, updateJobDto: UpdateJobDto): Promise<JobWithCompany> {
-    const { companyName, ...jobData } = updateJobDto;
+    const { companyName, ...jobData } = updateJobDto as any;
     let companyId: string | undefined;
 
     if (companyName) {
