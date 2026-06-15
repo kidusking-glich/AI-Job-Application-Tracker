@@ -1,0 +1,38 @@
+
+version: '3.8'
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: job_tracker_db
+    restart: always
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: job_tracker
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  app:
+    build: .
+    container_name: job_tracker_api
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: "postgresql://user:password@db:5432/job_tracker?schema=public"
+      JWT_SECRET: "your-super-secret-jwt-key-here-change-in-production"
+      JWT_EXPIRES_IN: "7d"
+      PORT: 3000
+    depends_on:
+      - db
+    volumes:
+      - .:/app
+      - /app/node_modules
+    command: >
+      sh -c "npx prisma migrate deploy && npm run start:dev"
+
+volumes:
+  postgres_data:
