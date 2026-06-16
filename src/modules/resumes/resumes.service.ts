@@ -84,7 +84,7 @@ export class ResumesService {
 
     // Delete the file from the filesystem
     try {
-      if (fs.existsSync(resume.fileUrl)) {
+      if (resume.fileUrl && fs.existsSync(resume.fileUrl)) {
         fs.unlinkSync(resume.fileUrl);
         this.logger.log(`Deleted resume file: ${resume.fileUrl}`);
       }

@@ -92,7 +92,7 @@ export class ResumesController {
   ) {
     const resume = await this.resumesService.findOne(user.id, id);
 
-    if (!fs.existsSync(resume.fileUrl)) {
+    if (!resume.fileUrl || !fs.existsSync(resume.fileUrl)) {
       throw new BadRequestException('File not found on disk');
     }
 
