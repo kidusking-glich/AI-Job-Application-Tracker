@@ -36,3 +36,15 @@ coverage/
 
 # Uploads
 uploads/
+
+# TypeScript incremental build cache
+*.tsbuildinfo
+
+# Tesseract.js language models
+*.traineddata
+
+# Temp test directories
+tmp-*
+
+# Frontend build
+frontend/dist/

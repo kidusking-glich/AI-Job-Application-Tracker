@@ -1,4 +1,3 @@
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -8,19 +7,35 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-
-
 // ------------------------------
 // Enums
 // ------------------------------
-enum ApplicationStatus {
-  WISHLIST
-  APPLIED
-  ASSESSMENT
-  INTERVIEW
-  OFFER
-  REJECTED
-  ACCEPTED
+
+enum ContractLanguage {
+  ENGLISH
+  AMHARIC
+  OTHER
+}
+
+enum AnalysisStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum ClauseSentiment {
+  FAVORABLE
+  NEUTRAL
+  UNFAVORABLE
+  RISKY
+}
+
+enum RiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
 }
 
 // ------------------------------
@@ -28,150 +43,98 @@ enum ApplicationStatus {
 // ------------------------------
 
 model User {
-  id            String                  @id @default(uuid())
-  email         String                  @unique
-  password      String
-  name          String?
-  createdAt     DateTime                @default(now())
-  updatedAt     DateTime                @updatedAt
-  deletedAt     DateTime?               @map("deleted_at") // Soft delete support
+  id        String      @id @default(uuid())
+  email     String      @unique
+  password  String
+  name      String?
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  deletedAt DateTime?   @map("deleted_at")
 
   // Relationships
-  applications  Application[]
-  resumes       Resume[]
-  coverLetters  CoverLetter[]
-  questions     InterviewQuestion[]
-  statusHistory ApplicationStatusHistory[]
+  contracts  Contract[]
+  analyses   Analysis[]
 
   @@map("users")
 }
 
-model Company {
-  id           String        @id @default(uuid())
-  name         String
-  website      String?
-  industry     String?
-  headquarters String?
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  deletedAt    DateTime?     @map("deleted_at") // Soft delete support
+model Contract {
+  id        String           @id @default(uuid())
+  title     String
+  content   String?          // Extracted/pasted text content
+  fileUrl   String?          // Path to uploaded file
+  language  ContractLanguage @default(ENGLISH)
+  userId    String
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  deletedAt DateTime?        @map("deleted_at")
 
   // Relationships
-  jobs         Job[]
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clauses   ContractClause[]
+  analyses  Analysis[]
 
-  @@map("companies")
+  @@map("contracts")
 }
 
-model Job {
-  id             String                  @id @default(uuid())
-  title          String
-  description    String?
-  location       String?
-  salary         String?
-  jobType        String? // Full-time, Part-time, Contract, etc.
-  postedAt       DateTime?
-  postedUrl      String?
-  companyId      String
-  createdAt      DateTime                @default(now())
-  updatedAt      DateTime                @updatedAt
-  deletedAt      DateTime?               @map("deleted_at") // Soft delete support
+model ContractClause {
+  id          String            @id @default(uuid())
+  contractId  String
+  clauseNumber Int
+  title       String?
+  content     String            // The actual clause text
+  pageNumber  Int?              // If extracted from a PDF, which page
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
 
   // Relationships
-  company        Company                 @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  applications   Application[]
-  questions      InterviewQuestion[]
+  contract    Contract          @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  analyses    ClauseAnalysis[]
 
-  @@map("jobs")
+  @@index([contractId, clauseNumber])
+  @@map("contract_clauses")
 }
 
-model Application {
-  id               String                      @id @default(uuid())
-  status           ApplicationStatus           @default(WISHLIST)
-  notes            String?
-  appliedAt        DateTime?
-  userId           String
-  jobId            String
-  resumeId         String?
-  coverLetterId    String?
-  createdAt        DateTime                    @default(now())
-  updatedAt        DateTime                    @updatedAt
-  deletedAt        DateTime?                   @map("deleted_at") // Soft delete support
+model Analysis {
+  id            String         @id @default(uuid())
+  contractId    String
+  userId        String
+  status        AnalysisStatus @default(PENDING)
+  overallScore  Int?           // 1-100 score (higher = better)
+  riskLevel     RiskLevel?     @default(LOW)
+  summary       String?        // Overall summary of the contract analysis
+  keyFindings   Json?          // JSON array of key findings
+  recommendations Json?        // JSON array of recommendations
+  errorMessage  String?        // If analysis failed
+  processedAt   DateTime?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 
   // Relationships
-  user             User                        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  job              Job                         @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  resume           Resume?                     @relation(fields: [resumeId], references: [id], onDelete: SetNull)
-  coverLetter      CoverLetter?                @relation(fields: [coverLetterId], references: [id], onDelete: SetNull)
-  statusHistory    ApplicationStatusHistory[]
-  questions        InterviewQuestion[]
+  contract      Contract       @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clauseAnalyses ClauseAnalysis[]
 
-  @@map("applications")
+  @@map("analyses")
 }
 
-model ApplicationStatusHistory {
-  id             String             @id @default(uuid())
-  applicationId  String
-  previousStatus ApplicationStatus?
-  newStatus      ApplicationStatus
-  changedAt      DateTime           @default(now())
-  changedById    String
-  notes          String?
-
-  application    Application        @relation(fields: [applicationId], references: [id], onDelete: Cascade)
-  changedBy      User               @relation(fields: [changedById], references: [id], onDelete: Cascade)
-
-  @@map("application_status_history")
-}
-
-model Resume {
-  id           String         @id @default(uuid())
-  title        String
-  content      String? // Can store text, or a URL
-  fileUrl      String? // URL to the uploaded resume file
-  userId       String
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
-  deletedAt    DateTime?      @map("deleted_at") // Soft delete support
+model ClauseAnalysis {
+  id              String          @id @default(uuid())
+  analysisId      String
+  clauseId        String
+  clauseNumber    Int
+  clauseTitle     String?
+  clauseText      String          // Snapshot of the clause text at analysis time
+  sentiment       ClauseSentiment
+  riskLevel       RiskLevel       @default(LOW)
+  explanation     String?         // Why this clause is good/bad
+  suggestion      String?         // Suggested improvement or alternative wording
+  severity        Int?            // 1-10 severity (10 = worst)
+  createdAt       DateTime        @default(now())
 
   // Relationships
-  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  applications Application[]
+  analysis        Analysis        @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+  clause          ContractClause  @relation(fields: [clauseId], references: [id], onDelete: Cascade)
 
-  @@map("resumes")
-}
-
-model CoverLetter {
-  id           String         @id @default(uuid())
-  title        String
-  content      String?
-  fileUrl      String? // URL to the uploaded cover letter file
-  userId       String
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
-  deletedAt    DateTime?      @map("deleted_at") // Soft delete support
-
-  // Relationships
-  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  applications Application[]
-
-  @@map("cover_letters")
-}
-
-model InterviewQuestion {
-  id           String         @id @default(uuid())
-  question     String
-  answer       String?
-  userId       String
-  jobId        String? // Optional, can be linked to a specific job
-  applicationId String? // Optional, can be linked to a specific application
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
-  deletedAt    DateTime?      @map("deleted_at") // Soft delete support
-
-  // Relationships
-  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  job          Job?           @relation(fields: [jobId], references: [id], onDelete: SetNull)
-  application  Application?   @relation(fields: [applicationId], references: [id], onDelete: SetNull)
-
-  @@map("interview_questions")
+  @@map("clause_analyses")
 }

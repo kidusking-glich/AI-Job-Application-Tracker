@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <defs>
+    <linearGradient id="flag" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#009640"/>
+      <stop offset="33%" stop-color="#009640"/>
+      <stop offset="33%" stop-color="#EFCD2E"/>
+      <stop offset="66%" stop-color="#EFCD2E"/>
+      <stop offset="66%" stop-color="#DA092F"/>
+      <stop offset="100%" stop-color="#DA092F"/>
+    </linearGradient>
+  </defs>
+  <rect width="32" height="32" rx="6" fill="url(#flag)"/>
+  <text x="16" y="23" text-anchor="middle" font-size="18" font-weight="bold" fill="white" font-family="sans-serif">ኢ</text>
+</svg>

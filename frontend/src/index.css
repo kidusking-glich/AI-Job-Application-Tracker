@@ -1,0 +1,109 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-ethiopian-cream text-gray-900 font-body;
+  }
+}
+
+@layer components {
+  .ethiopian-flag-gradient {
+    background: linear-gradient(
+      180deg,
+      #009640 0%,
+      #009640 33%,
+      #EFCD2E 33%,
+      #EFCD2E 66%,
+      #DA092F 66%,
+      #DA092F 100%
+    );
+  }
+
+  .ethiopian-flag-gradient-horizontal {
+    background: linear-gradient(
+      90deg,
+      #009640 0%,
+      #009640 33%,
+      #EFCD2E 33%,
+      #EFCD2E 66%,
+      #DA092F 66%,
+      #DA092F 100%
+    );
+  }
+
+  .glass-card {
+    @apply bg-white/80 backdrop-blur-md border border-white/20 shadow-xl;
+  }
+
+  .btn-primary {
+    @apply px-6 py-3 bg-ethiopian-green text-white font-semibold rounded-xl
+           hover:bg-emerald-700 active:scale-[0.98]
+           transition-all duration-200 ease-out
+           shadow-lg hover:shadow-emerald-200
+           disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100;
+  }
+
+  .btn-secondary {
+    @apply px-6 py-3 bg-white text-gray-800 font-semibold rounded-xl border-2 border-gray-200
+           hover:border-ethiopian-green hover:text-ethiopian-green
+           active:scale-[0.98] transition-all duration-200 ease-out
+           shadow-sm;
+  }
+
+  .btn-danger {
+    @apply px-6 py-3 bg-ethiopian-red text-white font-semibold rounded-xl
+           hover:bg-red-700 active:scale-[0.98]
+           transition-all duration-200 ease-out shadow-lg;
+  }
+
+  .input-field {
+    @apply w-full px-4 py-3 rounded-xl border-2 border-gray-200
+           focus:border-ethiopian-green focus:ring-2 focus:ring-ethiopian-green/20
+           outline-none transition-all duration-200
+           placeholder:text-gray-400 bg-white;
+  }
+
+  .badge-favorable {
+    @apply px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800;
+  }
+
+  .badge-neutral {
+    @apply px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-700;
+  }
+
+  .badge-unfavorable {
+    @apply px-3 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-800;
+  }
+
+  .badge-risky {
+    @apply px-3 py-1 rounded-full text-xs font-semibold bg-orange-100 text-orange-800;
+  }
+
+  .page-container {
+    @apply max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8;
+  }
+
+  .section-title {
+    @apply text-2xl font-display font-bold text-gray-900;
+  }
+
+  .animate-fade-in {
+    animation: fadeIn 0.5s ease-out;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .animate-slide-up {
+    animation: slideUp 0.3s ease-out;
+  }
+
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+}

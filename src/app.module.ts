@@ -3,9 +3,9 @@ import { ConfigModule } from '@nestjs/config';
 import { CoreModule } from './core/core.module';
 import { UsersModule } from './modules/users/users.module';
 import { AuthModule } from './modules/auth/auth.module';
-import { JobsModule } from './modules/jobs/jobs.module';
-import { ApplicationsModule } from './modules/applications/applications.module';
-import { ResumesModule } from './modules/resumes/resumes.module';
+import { ContractsModule } from './modules/contracts/contracts.module';
+import { AnalysisModule } from './modules/analysis/analysis.module';
+import { AiModule } from './modules/ai/ai.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
@@ -17,9 +17,9 @@ import { AppService } from './app.service';
     CoreModule,
     UsersModule,
     AuthModule,
-    JobsModule,
-    ApplicationsModule,
-    ResumesModule,
+    ContractsModule,
+    AnalysisModule,
+    AiModule,
   ],
   controllers: [AppController],
   providers: [AppService],
