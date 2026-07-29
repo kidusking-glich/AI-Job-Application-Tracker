@@ -1,40 +1,10 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { GroqAiProvider } from './groq-provider';
+import { AiProvider, ClauseAnalysisInput, ContractAnalysisResult, AnalyzedClause } from './ai-types';
 
-export interface ClauseAnalysisInput {
-  clauseNumber: number;
-  title?: string;
-  content: string;
-}
-
-export interface AnalyzedClause {
-  clauseNumber: number;
-  title: string;
-  content: string;
-  sentiment: 'FAVORABLE' | 'NEUTRAL' | 'UNFAVORABLE' | 'RISKY';
-  riskLevel: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
-  explanation: string;
-  suggestion: string;
-  severity: number;
-}
-
-export interface ContractAnalysisResult {
-  overallScore: number;
-  riskLevel: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
-  summary: string;
-  keyFindings: string[];
-  recommendations: string[];
-  clauses: AnalyzedClause[];
-}
-
-export abstract class AiProvider {
-  abstract analyzeContract(
-    title: string,
-    content: string,
-    clauses: ClauseAnalysisInput[],
-    language: string,
-  ): Promise<ContractAnalysisResult>;
-}
+export type { ClauseAnalysisInput, ContractAnalysisResult, AnalyzedClause };
+export { AiProvider };
 
 /**
  * Mock AI provider for development/demo purposes.
@@ -183,18 +153,31 @@ export class MockAiProvider extends AiProvider {
 }
 
 @Injectable()
-export class AiService {
+export class AiService implements OnModuleInit {
   private readonly logger = new Logger(AiService.name);
   private provider: AiProvider;
 
   constructor(private configService: ConfigService) {
-    // Default to mock provider
+    // Default to mock provider until we check env vars
     this.provider = new MockAiProvider();
-    this.logger.log('AI Service initialized with Mock provider');
   }
 
   /**
-   * Set a custom AI provider (for production use with OpenAI, Claude, etc.)
+   * On module init, check if a real AI provider is configured.
+   */
+  onModuleInit() {
+    const groqKey = this.configService.get<string>('GROQ_API_KEY');
+    if (groqKey) {
+      this.provider = new GroqAiProvider(this.configService);
+      const model = this.configService.get<string>('GROQ_MODEL', 'llama-3.3-70b-versatile');
+      this.logger.log(`AI Service initialized with Groq provider (model: ${model})`);
+    } else {
+      this.logger.log('AI Service initialized with Mock provider (set GROQ_API_KEY for real AI)');
+    }
+  }
+
+  /**
+   * Set a custom AI provider (for programmatic switching)
    */
   setProvider(provider: AiProvider) {
     this.provider = provider;
