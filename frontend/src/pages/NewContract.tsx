@@ -78,54 +78,55 @@ export default function NewContract() {
     <div className="page-container animate-fade-in max-w-3xl">
       <div className="mb-8">
         <h1 className="section-title">New Contract</h1>
-        <p className="text-gray-500 mt-1">
+        <p className="section-subtitle">
           Paste or upload a contract to get AI-powered analysis
         </p>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+      <div className="glass-card rounded-2xl overflow-hidden">
+        <div className="h-1 flag-accent" />
         {/* Mode Tabs */}
-        <div className="flex border-b border-gray-100">
+        <div className="flex border-b border-white/10">
           <button
             onClick={() => setMode('paste')}
             className={`flex-1 px-6 py-4 text-center font-medium transition-all duration-200 relative ${
               mode === 'paste'
-                ? 'text-ethiopian-green'
-                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                ? 'text-[#4ade80]'
+                : 'text-gray-400 hover:text-gray-200 hover:bg-white/5'
             }`}
           >
             <span className="mr-2">📝</span>
             Paste Text
             {mode === 'paste' && (
-              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-ethiopian-green" />
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-ethiopian-green to-ethiopian-yellow shadow-flag-glow" />
             )}
           </button>
           <button
             onClick={() => setMode('upload')}
             className={`flex-1 px-6 py-4 text-center font-medium transition-all duration-200 relative ${
               mode === 'upload'
-                ? 'text-ethiopian-green'
-                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                ? 'text-[#4ade80]'
+                : 'text-gray-400 hover:text-gray-200 hover:bg-white/5'
             }`}
           >
             <span className="mr-2">📎</span>
             Upload File
             {mode === 'upload' && (
-              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-ethiopian-green" />
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-ethiopian-green to-ethiopian-yellow shadow-flag-glow" />
             )}
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
           {error && (
-            <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700 animate-fade-in">
+            <div className="p-4 bg-ethiopian-red/10 border border-ethiopian-red/30 rounded-xl text-sm text-[#fb7185] animate-fade-in">
               {error}
             </div>
           )}
 
           {/* Title */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+            <label className="block text-sm font-medium text-gray-300 mb-1.5">
               Contract Title
             </label>
             <input
@@ -140,17 +141,17 @@ export default function NewContract() {
 
           {/* Language */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+            <label className="block text-sm font-medium text-gray-300 mb-1.5">
               Language
             </label>
             <div className="flex gap-3">
               <button
                 type="button"
                 onClick={() => setLanguage('ENGLISH')}
-                className={`flex-1 px-4 py-3 rounded-xl border-2 font-medium transition-all duration-200 ${
+                className={`flex-1 px-4 py-3 rounded-xl border font-medium transition-all duration-200 ${
                   language === 'ENGLISH'
-                    ? 'border-ethiopian-green bg-ethiopian-green/5 text-ethiopian-green'
-                    : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                    ? 'border-ethiopian-green bg-ethiopian-green/15 text-[#4ade80] shadow-flag-glow'
+                    : 'border-white/15 text-gray-400 hover:border-white/30 hover:text-gray-200'
                 }`}
               >
                 🇬🇧 English
@@ -158,10 +159,10 @@ export default function NewContract() {
               <button
                 type="button"
                 onClick={() => setLanguage('AMHARIC')}
-                className={`flex-1 px-4 py-3 rounded-xl border-2 font-medium transition-all duration-200 ${
+                className={`flex-1 px-4 py-3 rounded-xl border font-medium transition-all duration-200 ${
                   language === 'AMHARIC'
-                    ? 'border-ethiopian-green bg-ethiopian-green/5 text-ethiopian-green'
-                    : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                    ? 'border-ethiopian-green bg-ethiopian-green/15 text-[#4ade80] shadow-flag-glow'
+                    : 'border-white/15 text-gray-400 hover:border-white/30 hover:text-gray-200'
                 }`}
               >
                 🇪🇹 አማርኛ
@@ -172,7 +173,7 @@ export default function NewContract() {
           {/* Paste Mode */}
           {mode === 'paste' && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              <label className="block text-sm font-medium text-gray-300 mb-1.5">
                 Contract Text
               </label>
               <textarea
@@ -184,7 +185,7 @@ export default function NewContract() {
                 required
               />
               {content && (
-                <p className="text-xs text-gray-400 mt-2">
+                <p className="text-xs text-gray-500 mt-2">
                   {content.length.toLocaleString()} characters
                 </p>
               )}
@@ -194,7 +195,7 @@ export default function NewContract() {
           {/* Upload Mode */}
           {mode === 'upload' && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              <label className="block text-sm font-medium text-gray-300 mb-1.5">
                 Contract File
               </label>
               <div
@@ -204,10 +205,10 @@ export default function NewContract() {
                 onClick={() => fileInputRef.current?.click()}
                 className={`border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-all duration-200 ${
                   dragOver
-                    ? 'border-ethiopian-green bg-ethiopian-green/5'
+                    ? 'border-ethiopian-green bg-ethiopian-green/10 shadow-flag-glow'
                     : file
-                      ? 'border-ethiopian-green bg-ethiopian-green/5'
-                      : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50'
+                      ? 'border-ethiopian-green bg-ethiopian-green/10'
+                      : 'border-white/20 hover:border-ethiopian-green/60 hover:bg-white/5'
                 }`}
               >
                 <input
@@ -221,8 +222,8 @@ export default function NewContract() {
                 {file ? (
                   <div className="space-y-2">
                     <div className="text-4xl">📄</div>
-                    <p className="font-medium text-gray-900">{file.name}</p>
-                    <p className="text-sm text-gray-500">
+                    <p className="font-medium text-gray-100">{file.name}</p>
+                    <p className="text-sm text-gray-400">
                       {(file.size / 1024 / 1024).toFixed(2)} MB
                     </p>
                     <button
@@ -231,7 +232,7 @@ export default function NewContract() {
                         e.stopPropagation();
                         setFile(null);
                       }}
-                      className="text-sm text-red-500 hover:underline"
+                      className="text-sm text-[#fb7185] hover:underline"
                     >
                       Remove
                     </button>
@@ -239,7 +240,7 @@ export default function NewContract() {
                 ) : (
                   <div className="space-y-3">
                     <div className="text-4xl">📂</div>
-                    <p className="font-medium text-gray-700">
+                    <p className="font-medium text-gray-200">
                       Drop your contract here or click to browse
                     </p>
                     <p className="text-sm text-gray-500">
@@ -284,9 +285,9 @@ export default function NewContract() {
       </div>
 
       {/* Tips */}
-      <div className="mt-8 p-6 bg-amber-50 border border-amber-200 rounded-2xl">
-        <h3 className="font-semibold text-amber-800 mb-2">💡 Tips for Best Results</h3>
-        <ul className="text-sm text-amber-700 space-y-1.5">
+      <div className="mt-8 p-6 bg-ethiopian-yellow/10 border border-ethiopian-yellow/25 rounded-2xl">
+        <h3 className="font-semibold text-ethiopian-yellow mb-2">💡 Tips for Best Results</h3>
+        <ul className="text-sm text-yellow-100/80 space-y-1.5">
           <li>• Include the complete contract text for thorough analysis</li>
           <li>• The AI can analyze contracts in both English and Amharic (አማርኛ)</li>
           <li>• Results will highlight unfavorable clauses in red and favorable ones in green</li>

@@ -3,8 +3,35 @@
 @tailwind utilities;
 
 @layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
   body {
-    @apply bg-ethiopian-cream text-gray-900 font-body;
+    @apply bg-ethiopian-dark text-gray-100 font-body antialiased;
+    background-image:
+      radial-gradient(1200px 600px at 10% -10%, rgba(0, 150, 64, 0.18), transparent 60%),
+      radial-gradient(900px 500px at 100% 0%, rgba(239, 205, 46, 0.1), transparent 55%),
+      radial-gradient(1000px 600px at 50% 120%, rgba(218, 9, 47, 0.12), transparent 60%);
+    background-attachment: fixed;
+    min-height: 100vh;
+  }
+
+  ::selection {
+    @apply bg-ethiopian-green/60 text-white;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-white/15 rounded-full;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-white/30;
   }
 }
 
@@ -33,77 +60,107 @@
     );
   }
 
-  .glass-card {
-    @apply bg-white/80 backdrop-blur-md border border-white/20 shadow-xl;
+  .flag-accent {
+    background: linear-gradient(
+      90deg,
+      #009640,
+      #EFCD2E,
+      #DA092F,
+      #EFCD2E,
+      #009640
+    );
+    background-size: 200% 100%;
+    animation: flag-wave 8s ease-in-out infinite;
   }
 
+  /* ---------- Cards ---------- */
+  .glass-card {
+    @apply bg-white/[0.04] backdrop-blur-xl border border-white/10;
+    box-shadow: 0 8px 32px -12px rgba(0, 0, 0, 0.55);
+  }
+
+  /* ---------- Buttons ---------- */
   .btn-primary {
-    @apply px-6 py-3 bg-ethiopian-green text-white font-semibold rounded-xl
-           hover:bg-emerald-700 active:scale-[0.98]
-           transition-all duration-200 ease-out
-           shadow-lg hover:shadow-emerald-200
+    @apply px-6 py-3 rounded-xl font-semibold text-white
+           bg-gradient-to-r           from-ethiopian-green to-[#00b354]
+           hover:from-[#00a84d] hover:to-[#00c95e]
+           active:scale-[0.98] transition-all duration-200 ease-out
            disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100;
+    box-shadow: 0 0 40px -8px rgba(0, 150, 64, 0.45);
   }
 
   .btn-secondary {
-    @apply px-6 py-3 bg-white text-gray-800 font-semibold rounded-xl border-2 border-gray-200
-           hover:border-ethiopian-green hover:text-ethiopian-green
-           active:scale-[0.98] transition-all duration-200 ease-out
-           shadow-sm;
+    @apply px-6 py-3 rounded-xl font-semibold text-gray-200
+           bg-white/5 border border-white/15
+           hover:border-ethiopian-yellow/60 hover:text-ethiopian-yellow hover:bg-white/10
+           active:scale-[0.98] transition-all duration-200 ease-out;
   }
 
   .btn-danger {
-    @apply px-6 py-3 bg-ethiopian-red text-white font-semibold rounded-xl
-           hover:bg-red-700 active:scale-[0.98]
-           transition-all duration-200 ease-out shadow-lg;
+    @apply px-6 py-3 rounded-xl font-semibold text-white
+           bg-gradient-to-r from-ethiopian-red to-[#f43f5e]
+           hover:from-[#f43f5e] hover:to-ethiopian-red
+           active:scale-[0.98] transition-all duration-200 ease-out;
+    box-shadow: 0 0 40px -8px rgba(218, 9, 47, 0.4);
   }
 
+  /* ---------- Forms ---------- */
   .input-field {
-    @apply w-full px-4 py-3 rounded-xl border-2 border-gray-200
-           focus:border-ethiopian-green focus:ring-2 focus:ring-ethiopian-green/20
+    @apply w-full px-4 py-3 rounded-xl border border-white/15 bg-white/[0.05]
+           focus:border-ethiopian-green focus:ring-2 focus:ring-ethiopian-green/30
            outline-none transition-all duration-200
-           placeholder:text-gray-400 bg-white;
+           placeholder:text-gray-500 text-gray-100;
   }
 
+  /* ---------- Badges ---------- */
   .badge-favorable {
-    @apply px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800;
+    @apply px-3 py-1 rounded-full text-xs font-semibold bg-ethiopian-green/20 text-[#4ade80] border border-ethiopian-green/30;
   }
 
   .badge-neutral {
-    @apply px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-700;
+    @apply px-3 py-1 rounded-full text-xs font-semibold bg-white/10 text-gray-300 border border-white/15;
   }
 
   .badge-unfavorable {
-    @apply px-3 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-800;
+    @apply px-3 py-1 rounded-full text-xs font-semibold bg-ethiopian-red/20 text-[#fb7185] border border-ethiopian-red/30;
   }
 
   .badge-risky {
-    @apply px-3 py-1 rounded-full text-xs font-semibold bg-orange-100 text-orange-800;
+    @apply px-3 py-1 rounded-full text-xs font-semibold bg-orange-500/20 text-orange-300 border border-orange-500/30;
   }
 
+  /* ---------- Layout helpers ---------- */
   .page-container {
     @apply max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8;
   }
 
   .section-title {
-    @apply text-2xl font-display font-bold text-gray-900;
+    @apply text-3xl font-display font-bold text-white tracking-tight;
   }
 
-  .animate-fade-in {
-    animation: fadeIn 0.5s ease-out;
+  .section-subtitle {
+    @apply text-sm text-gray-400 mt-1.5;
   }
 
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
+  .hero-grid {
+    background-image:
+      linear-gradient(rgba(255, 255, 255, 0.5) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.5) 1px, transparent 1px);
+    background-size: 48px 48px;
   }
 
-  .animate-slide-up {
-    animation: slideUp 0.3s ease-out;
+  /* ---------- Animations ---------- */
+  @keyframes flag-wave {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
   }
 
-  @keyframes slideUp {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 }

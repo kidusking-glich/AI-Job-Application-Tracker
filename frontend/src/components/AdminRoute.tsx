@@ -9,7 +9,7 @@ export default function AdminRoute({ children }: Props) {
   const user = authService.getUser();
 
   if (!authService.isAuthenticated()) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/" replace />;
   }
   if (!user?.isSuperAdmin) {
     return <Navigate to="/" replace />;

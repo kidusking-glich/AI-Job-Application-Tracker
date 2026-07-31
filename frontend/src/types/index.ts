@@ -83,10 +83,10 @@ export interface Analysis {
 }
 
 export const SENTIMENT_COLORS: Record<ClauseSentiment, string> = {
-  FAVORABLE: 'bg-emerald-50 border-emerald-300 text-emerald-900',
-  NEUTRAL: 'bg-gray-50 border-gray-300 text-gray-800',
-  UNFAVORABLE: 'bg-red-50 border-red-300 text-red-900',
-  RISKY: 'bg-orange-50 border-orange-300 text-orange-900',
+  FAVORABLE: 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300',
+  NEUTRAL: 'bg-white/10 border-white/20 text-gray-300',
+  UNFAVORABLE: 'bg-red-500/15 border-red-500/40 text-red-300',
+  RISKY: 'bg-orange-500/15 border-orange-500/40 text-orange-300',
 };
 
 export const SENTIMENT_LABELS: Record<ClauseSentiment, string> = {
@@ -104,10 +104,10 @@ export const SENTIMENT_LABELS_AMHARIC: Record<ClauseSentiment, string> = {
 };
 
 export const RISK_COLORS: Record<RiskLevel, string> = {
-  LOW: 'bg-emerald-100 text-emerald-800',
-  MEDIUM: 'bg-yellow-100 text-yellow-800',
-  HIGH: 'bg-orange-100 text-orange-800',
-  CRITICAL: 'bg-red-100 text-red-800',
+  LOW: 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/40',
+  MEDIUM: 'bg-yellow-500/15 text-yellow-300 border border-yellow-500/40',
+  HIGH: 'bg-orange-500/15 text-orange-300 border border-orange-500/40',
+  CRITICAL: 'bg-red-500/15 text-red-300 border border-red-500/40',
 };
 
 export interface RequestLog {

@@ -25,26 +25,27 @@ export default function ForgotPassword() {
   };
 
   return (
-    <div className="min-h-[70vh] flex items-center justify-center p-4">
+    <div className="min-h-[70vh] flex items-center justify-center p-4 relative overflow-hidden">
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 rounded-full bg-ethiopian-green/5 blur-3xl" />
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 rounded-full bg-ethiopian-red/5 blur-3xl" />
+        <div className="absolute -top-32 -right-32 w-96 h-96 rounded-full bg-ethiopian-green/20 blur-3xl animate-pulse-soft" />
+        <div className="absolute -bottom-32 -left-32 w-96 h-96 rounded-full bg-ethiopian-red/20 blur-3xl animate-pulse-soft [animation-delay:1s]" />
       </div>
 
-      <div className="w-full max-w-md animate-fade-in">
+      <div className="w-full max-w-md animate-fade-in relative">
         <div className="text-center mb-8">
-          <div className="w-16 h-16 rounded-2xl ethiopian-flag-gradient shadow-lg mx-auto mb-4 flex items-center justify-center">
-            <span className="text-white text-2xl font-bold">ኢ</span>
+          <div className="w-16 h-16 rounded-2xl ethiopian-flag-gradient shadow-flag-glow mx-auto mb-4 flex items-center justify-center animate-float">
+            <span className="text-white text-2xl font-bold drop-shadow">ኢ</span>
           </div>
-          <h1 className="text-3xl font-display font-bold text-gray-900">Reset Password</h1>
-          <p className="text-gray-500 mt-2">We'll email you a link to choose a new one</p>
+          <h1 className="text-3xl font-display font-bold text-white tracking-tight">Reset Password</h1>
+          <p className="text-gray-400 mt-2">We'll email you a link to choose a new one</p>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
+        <div className="glass-card rounded-2xl p-8">
+          <div className="h-1 flag-accent rounded-full mb-6 -mt-2 w-24 mx-auto" />
           {sent ? (
             <div className="text-center animate-fade-in">
               <div className="text-5xl mb-4">📬</div>
-              <p className="text-gray-700 mb-6">
+              <p className="text-gray-400 mb-6">
                 If that email is registered and verified, a password reset link has been sent to
                 your inbox. Check your email (and spam folder).
               </p>
@@ -55,13 +56,13 @@ export default function ForgotPassword() {
           ) : (
             <form onSubmit={handleSubmit} className="space-y-5">
               {error && (
-                <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700 animate-fade-in">
+                <div className="p-4 bg-ethiopian-red/10 border border-ethiopian-red/30 rounded-xl text-sm text-[#fb7185] animate-fade-in">
                   {error}
                 </div>
               )}
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
+                <label className="block text-sm font-medium text-gray-300 mb-1.5">Email</label>
                 <input
                   type="email"
                   value={email}
@@ -88,7 +89,7 @@ export default function ForgotPassword() {
               </button>
 
               <div className="text-center pt-2">
-                <Link to="/login" className="text-sm text-ethiopian-green font-semibold hover:underline">
+                <Link to="/login" className="text-sm text-[#4ade80] font-semibold hover:underline transition-colors">
                   ← Back to login
                 </Link>
               </div>

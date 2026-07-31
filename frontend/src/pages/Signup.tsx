@@ -29,33 +29,40 @@ export default function Signup() {
   // Success screen: tell the user to verify their email
   if (signupResult) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <div className="w-full max-w-md animate-fade-in">
-          <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100 text-center">
+      <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute -top-32 -right-32 w-96 h-96 rounded-full bg-ethiopian-green/20 blur-3xl animate-pulse-soft" />
+          <div className="absolute -bottom-32 -left-32 w-96 h-96 rounded-full bg-ethiopian-red/20 blur-3xl animate-pulse-soft [animation-delay:1s]" />
+        </div>
+        <div className="w-full max-w-md animate-fade-in relative">
+          <div className="glass-card rounded-2xl p-8 text-center">
+            <div className="w-16 h-16 rounded-2xl ethiopian-flag-gradient shadow-flag-glow mx-auto mb-5 flex items-center justify-center animate-float">
+              <span className="text-white text-2xl font-bold drop-shadow">ኢ</span>
+            </div>
             <div className="text-5xl mb-4">📧</div>
-            <h1 className="text-2xl font-display font-bold text-gray-900 mb-3">
+            <h1 className="text-2xl font-display font-bold text-white mb-3">
               Verify Your Email
             </h1>
-            <p className="text-gray-600 mb-4">{signupResult.message}</p>
+            <p className="text-gray-400 mb-4">{signupResult.message}</p>
 
             {signupResult.devVerificationUrl && (
-              <div className="mb-5 p-4 bg-yellow-50 border border-yellow-200 rounded-xl text-sm">
-                <p className="text-yellow-800 font-medium mb-2">
+              <div className="mb-5 p-4 bg-ethiopian-yellow/10 border border-ethiopian-yellow/30 rounded-xl text-sm">
+                <p className="text-ethiopian-yellow font-medium mb-2">
                   ⚠️ Development mode: email service not configured.
                 </p>
-                <p className="text-gray-700 mb-2">Use this link to verify:</p>
+                <p className="text-gray-300 mb-2">Use this link to verify:</p>
                 <a
                   href={signupResult.devVerificationUrl}
-                  className="text-ethiopian-green font-semibold hover:underline break-all"
+                  className="text-[#4ade80] font-semibold hover:underline break-all"
                 >
                   {signupResult.devVerificationUrl}
                 </a>
               </div>
             )}
 
-            <p className="text-sm text-gray-500 mb-6">
+            <p className="text-sm text-gray-400 mb-6">
               Already verified?{' '}
-              <Link to="/login" className="text-ethiopian-green font-semibold hover:underline">
+              <Link to="/login" className="text-[#4ade80] font-semibold hover:underline transition-colors">
                 Sign in
               </Link>
             </p>
@@ -70,37 +77,39 @@ export default function Signup() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
+    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
       {/* Decorative background */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 rounded-full bg-ethiopian-green/5 blur-3xl" />
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 rounded-full bg-ethiopian-red/5 blur-3xl" />
+        <div className="absolute -top-32 -right-32 w-96 h-96 rounded-full bg-ethiopian-green/20 blur-3xl animate-pulse-soft" />
+        <div className="absolute -bottom-32 -left-32 w-96 h-96 rounded-full bg-ethiopian-red/20 blur-3xl animate-pulse-soft [animation-delay:1s]" />
+        <div className="absolute top-1/3 -right-24 w-72 h-72 rounded-full bg-ethiopian-yellow/10 blur-3xl" />
       </div>
 
-      <div className="w-full max-w-md animate-fade-in">
+      <div className="w-full max-w-md animate-fade-in relative">
         <div className="text-center mb-8">
-          <div className="w-16 h-16 rounded-2xl ethiopian-flag-gradient shadow-lg mx-auto mb-4 flex items-center justify-center">
-            <span className="text-white text-2xl font-bold">ኢ</span>
+          <div className="w-20 h-20 rounded-2xl ethiopian-flag-gradient shadow-flag-glow mx-auto mb-5 flex items-center justify-center animate-float">
+            <span className="text-white text-3xl font-bold drop-shadow-lg">ኢ</span>
           </div>
-          <h1 className="text-3xl font-display font-bold text-gray-900">
+          <h1 className="text-3xl font-display font-bold text-white tracking-tight">
             Create Account
           </h1>
-          <p className="text-gray-500 mt-2">
+          <p className="text-gray-400 mt-2">
             Start analyzing your contracts with AI
           </p>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
+        <div className="glass-card rounded-2xl p-8">
+          <div className="h-1 flag-accent rounded-full mb-6 -mt-2 w-24 mx-auto" />
           <form onSubmit={handleSubmit} className="space-y-5">
             {error && (
-              <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700 animate-fade-in">
+              <div className="p-4 bg-ethiopian-red/10 border border-ethiopian-red/30 rounded-xl text-sm text-[#fb7185] animate-fade-in">
                 {error}
               </div>
             )}
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Name <span className="text-gray-400">(optional)</span>
+              <label className="block text-sm font-medium text-gray-300 mb-1.5">
+                Name <span className="text-gray-500">(optional)</span>
               </label>
               <input
                 type="text"
@@ -112,7 +121,7 @@ export default function Signup() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              <label className="block text-sm font-medium text-gray-300 mb-1.5">
                 Email
               </label>
               <input
@@ -126,7 +135,7 @@ export default function Signup() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              <label className="block text-sm font-medium text-gray-300 mb-1.5">
                 Password
               </label>
               <input
@@ -157,9 +166,9 @@ export default function Signup() {
           </form>
 
           <div className="mt-6 text-center">
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-gray-400">
               Already have an account?{' '}
-              <Link to="/login" className="text-ethiopian-green font-semibold hover:underline">
+              <Link to="/login" className="text-[#4ade80] font-semibold hover:underline transition-colors">
                 Sign in
               </Link>
             </p>

@@ -7,7 +7,7 @@ interface Props {
 
 export default function ProtectedRoute({ children }: Props) {
   if (!authService.isAuthenticated()) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/" replace />;
   }
   return <>{children}</>;
 }

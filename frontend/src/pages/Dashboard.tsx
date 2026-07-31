@@ -55,7 +55,7 @@ export default function Dashboard() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
         <div>
           <h1 className="section-title">My Contracts</h1>
-          <p className="text-gray-500 mt-1">
+          <p className="section-subtitle">
             {contracts.length} contract{contracts.length !== 1 ? 's' : ''} uploaded
           </p>
         </div>
@@ -91,23 +91,23 @@ export default function Dashboard() {
             return (
               <div
                 key={level}
-                className="bg-white rounded-xl p-4 shadow-sm border border-gray-100"
+                className="glass-card rounded-xl p-4 transition-all duration-300 hover:scale-[1.03] hover:border-white/25"
               >
                 <div className="flex items-center gap-2 mb-1">
                   <span
                     className={`w-2 h-2 rounded-full ${
                       level === 'LOW'
-                        ? 'bg-emerald-500'
+                        ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]'
                         : level === 'MEDIUM'
-                          ? 'bg-yellow-500'
+                          ? 'bg-ethiopian-yellow shadow-[0_0_8px_rgba(239,205,46,0.8)]'
                           : level === 'HIGH'
-                            ? 'bg-orange-500'
-                            : 'bg-red-500'
+                            ? 'bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.8)]'
+                            : 'bg-ethiopian-red shadow-[0_0_8px_rgba(218,9,47,0.8)]'
                     }`}
                   />
-                  <span className="text-xs font-medium text-gray-500">{level} Risk</span>
+                  <span className="text-xs font-medium text-gray-400">{level} Risk</span>
                 </div>
-                <p className="text-2xl font-bold text-gray-900">{count}</p>
+                <p className="text-2xl font-bold text-white">{count}</p>
               </div>
             );
           })}
@@ -117,15 +117,15 @@ export default function Dashboard() {
       {/* Empty State */}
       {contracts.length === 0 && (
         <div className="text-center py-16 animate-fade-in">
-          <div className="w-20 h-20 rounded-2xl bg-ethiopian-green/10 mx-auto mb-6 flex items-center justify-center">
-            <svg className="w-10 h-10 text-ethiopian-green" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div className="w-20 h-20 rounded-2xl bg-ethiopian-green/15 mx-auto mb-6 flex items-center justify-center shadow-flag-glow">
+            <svg className="w-10 h-10 text-[#4ade80]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
           </div>
-          <h2 className="text-xl font-display font-bold text-gray-900 mb-2">
+          <h2 className="text-xl font-display font-bold text-white mb-2">
             No contracts yet
           </h2>
-          <p className="text-gray-500 mb-6 max-w-md mx-auto">
+          <p className="text-gray-400 mb-6 max-w-md mx-auto">
             Upload or paste your first contract to get an AI-powered analysis highlighting good and bad clauses.
           </p>
           <Link to="/new" className="btn-primary inline-flex items-center gap-2">
@@ -141,7 +141,7 @@ export default function Dashboard() {
           return (
             <div
               key={contract.id}
-              className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 hover:shadow-md hover:border-ethiopian-green/20 transition-all duration-300 cursor-pointer group animate-slide-up"
+              className="glass-card rounded-xl p-5 transition-all duration-300 cursor-pointer group animate-slide-up hover:border-ethiopian-green/50 hover:shadow-flag-glow"
               style={{ animationDelay: `${index * 50}ms` }}
               onClick={() => {
                 if (analysis) {
@@ -153,11 +153,11 @@ export default function Dashboard() {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 mb-1">
                     <span className="text-lg">{contract.language === 'AMHARIC' ? '🇪🇹' : '📄'}</span>
-                    <h3 className="font-semibold text-gray-900 truncate group-hover:text-ethiopian-green transition-colors">
+                    <h3 className="font-semibold text-gray-100 truncate group-hover:text-[#4ade80] transition-colors">
                       {contract.title}
                     </h3>
                   </div>
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-gray-400">
                     {contract.language === 'AMHARIC'
                       ? 'Amharic'
                       : contract.language === 'ENGLISH'
@@ -181,7 +181,7 @@ export default function Dashboard() {
                           <span className={`px-3 py-1 rounded-full text-xs font-semibold ${RISK_COLORS[analysis.riskLevel || 'LOW']}`}>
                             {analysis.overallScore}/100
                           </span>
-                          <span className="text-sm text-gray-400 group-hover:text-ethiopian-green transition-colors">
+                          <span className="text-sm text-gray-400 group-hover:text-[#4ade80] transition-colors">
                             View →
                           </span>
                         </>
@@ -202,7 +202,7 @@ export default function Dashboard() {
                         e.stopPropagation();
                         navigate(`/analysis/${contract.id}`);
                       }}
-                      className="text-sm text-ethiopian-green font-medium hover:underline"
+                      className="text-sm text-[#4ade80] font-medium hover:underline"
                     >
                       Analyze →
                     </button>
@@ -216,7 +216,7 @@ export default function Dashboard() {
 
       {/* No search results */}
       {filteredContracts.length === 0 && contracts.length > 0 && (
-        <div className="text-center py-12 text-gray-500">
+        <div className="text-center py-12 text-gray-400">
           No contracts match "{search}"
         </div>
       )}

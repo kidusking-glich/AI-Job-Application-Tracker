@@ -13,10 +13,11 @@ export default function LoadingSpinner({ size = 'md', text }: Props) {
   return (
     <div className="flex flex-col items-center justify-center gap-3 py-8">
       <div className={`${sizeClasses[size]} relative`}>
-        <div className="absolute inset-0 rounded-full border-4 border-ethiopian-yellow/30" />
+        <div className="absolute inset-0 rounded-full border-4 border-white/10" />
         <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-ethiopian-green animate-spin" />
+        <div className="absolute inset-0 rounded-full border-4 border-transparent border-b-ethiopian-red animate-spin [animation-duration:1.2s]" />
       </div>
-      {text && <p className="text-sm text-gray-500 animate-pulse">{text}</p>}
+      {text && <p className="text-sm text-gray-400 animate-pulse-soft">{text}</p>}
     </div>
   );
 }
