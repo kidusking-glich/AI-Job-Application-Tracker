@@ -34,6 +34,20 @@ export default function Navbar() {
           {/* Navigation Links */}
           {isAuth && (
             <div className="flex items-center gap-1">
+              {user?.isAdmin && (
+                <Link
+                  to="/admin"
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
+                    location.pathname === '/admin'
+                      ? 'bg-gray-900 text-white shadow-sm'
+                      : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                  }`}
+                >
+                  <span>🛡️</span>
+                  <span className="hidden sm:inline">Admin</span>
+                </Link>
+              )}
+
               {navLinks.map((link) => {
                 const isActive = location.pathname === link.to;
                 return (

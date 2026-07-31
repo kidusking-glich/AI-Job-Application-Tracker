@@ -43,19 +43,41 @@ enum RiskLevel {
 // ------------------------------
 
 model User {
-  id        String      @id @default(uuid())
-  email     String      @unique
-  password  String
-  name      String?
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
-  deletedAt DateTime?   @map("deleted_at")
+  id                         String      @id @default(uuid())
+  email                      String      @unique
+  password                   String
+  name                       String?
+  isAdmin                    Boolean     @default(false)
+  emailVerifiedAt            DateTime?
+  verificationToken          String?
+  verificationTokenExpiresAt DateTime?
+  createdAt                  DateTime    @default(now())
+  updatedAt                  DateTime    @updatedAt
+  deletedAt                  DateTime?   @map("deleted_at")
 
   // Relationships
-  contracts  Contract[]
-  analyses   Analysis[]
+  contracts   Contract[]
+  analyses    Analysis[]
+  requestLogs RequestLog[]
 
   @@map("users")
+}
+
+model RequestLog {
+  id             String   @id @default(uuid())
+  method         String
+  path           String
+  statusCode     Int
+  responseTimeMs Int?
+  userId         String?
+  ip             String?
+  userAgent      String?
+  createdAt      DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@map("request_logs")
 }
 
 model Contract {

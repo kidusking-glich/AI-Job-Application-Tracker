@@ -2,6 +2,8 @@ export interface User {
   id: string;
   email: string;
   name?: string;
+  isAdmin?: boolean;
+  emailVerifiedAt?: string | null;
   createdAt: string;
 }
 
@@ -105,6 +107,47 @@ export const RISK_COLORS: Record<RiskLevel, string> = {
   HIGH: 'bg-orange-100 text-orange-800',
   CRITICAL: 'bg-red-100 text-red-800',
 };
+
+export interface RequestLog {
+  id: string;
+  method: string;
+  path: string;
+  statusCode: number;
+  responseTimeMs?: number;
+  userId?: string;
+  ip?: string;
+  userAgent?: string;
+  createdAt: string;
+  user?: { email: string } | null;
+}
+
+export interface AdminStats {
+  totalUsers: number;
+  verifiedUsers: number;
+  totalContracts: number;
+  totalAnalyses: number;
+  totalRequests: number;
+  requestsToday: number;
+  requestsThisWeek: number;
+  requestsByDay: { date: string; count: number }[];
+  topEndpoints: { method: string; path: string; count: number }[];
+}
+
+export interface AdminUser {
+  id: string;
+  email: string;
+  name?: string;
+  isAdmin: boolean;
+  emailVerifiedAt?: string | null;
+  createdAt: string;
+  _count: { contracts: number; analyses: number };
+}
+
+export interface SignupResponse {
+  user: User;
+  message: string;
+  devVerificationUrl?: string;
+}
 
 export type AnalysisLanguage = 'ENGLISH' | 'AMHARIC';
 

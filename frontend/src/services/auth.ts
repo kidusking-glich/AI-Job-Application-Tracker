@@ -1,5 +1,5 @@
 import api from './api';
-import type { AuthResponse, User } from '../types';
+import type { AuthResponse, User, SignupResponse } from '../types';
 
 export const authService = {
   async login(email: string, password: string): Promise<AuthResponse> {
@@ -9,10 +9,18 @@ export const authService = {
     return data;
   },
 
-  async signup(email: string, password: string, name?: string): Promise<AuthResponse> {
-    const { data } = await api.post<AuthResponse>('/auth/signup', { email, password, name });
-    localStorage.setItem('token', data.access_token);
-    localStorage.setItem('user', JSON.stringify(data.user));
+  async signup(email: string, password: string, name?: string): Promise<SignupResponse> {
+    const { data } = await api.post<SignupResponse>('/auth/signup', { email, password, name });
+    return data;
+  },
+
+  async verifyEmail(token: string): Promise<{ message: string; user: User }> {
+    const { data } = await api.post('/auth/verify-email', { token });
+    return data;
+  },
+
+  async resendVerification(email: string): Promise<{ message: string }> {
+    const { data } = await api.post('/auth/resend-verification', { email });
     return data;
   },
 

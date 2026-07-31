@@ -1,14 +1,15 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { authService } from '../services/auth';
+import type { SignupResponse } from '../types';
 
 export default function Signup() {
-  const navigate = useNavigate();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [signupResult, setSignupResult] = useState<SignupResponse | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -16,14 +17,57 @@ export default function Signup() {
     setLoading(true);
 
     try {
-      await authService.signup(email, password, name || undefined);
-      navigate('/');
+      const result = await authService.signup(email, password, name || undefined);
+      setSignupResult(result);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Signup failed. Please try again.');
     } finally {
       setLoading(false);
     }
   };
+
+  // Success screen: tell the user to verify their email
+  if (signupResult) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <div className="w-full max-w-md animate-fade-in">
+          <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100 text-center">
+            <div className="text-5xl mb-4">📧</div>
+            <h1 className="text-2xl font-display font-bold text-gray-900 mb-3">
+              Verify Your Email
+            </h1>
+            <p className="text-gray-600 mb-4">{signupResult.message}</p>
+
+            {signupResult.devVerificationUrl && (
+              <div className="mb-5 p-4 bg-yellow-50 border border-yellow-200 rounded-xl text-sm">
+                <p className="text-yellow-800 font-medium mb-2">
+                  ⚠️ Development mode: email service not configured.
+                </p>
+                <p className="text-gray-700 mb-2">Use this link to verify:</p>
+                <a
+                  href={signupResult.devVerificationUrl}
+                  className="text-ethiopian-green font-semibold hover:underline break-all"
+                >
+                  {signupResult.devVerificationUrl}
+                </a>
+              </div>
+            )}
+
+            <p className="text-sm text-gray-500 mb-6">
+              Already verified?{' '}
+              <Link to="/login" className="text-ethiopian-green font-semibold hover:underline">
+                Sign in
+              </Link>
+            </p>
+
+            <Link to="/login" className="btn-primary w-full flex items-center justify-center gap-2">
+              Go to Login
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
