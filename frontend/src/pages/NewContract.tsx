@@ -3,9 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { contractsService } from '../services/contracts';
 import { analysisService } from '../services/analysis';
 import { getErrorMessage } from '../services/api';
+import { useToast } from '../components/ToastProvider';
 
 export default function NewContract() {
   const navigate = useNavigate();
+  const toast = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [mode, setMode] = useState<'paste' | 'upload'>('paste');
   const [title, setTitle] = useState('');
@@ -46,11 +48,14 @@ export default function NewContract() {
 
       // Trigger analysis
       await analysisService.analyze(contract.id);
+      toast('Contract created — analysis started!', 'success');
 
       // Navigate to dashboard - analysis is processing
       navigate('/');
     } catch (err: any) {
-      setError(getErrorMessage(err, 'Failed to create contract'));
+      const msg = getErrorMessage(err, 'Failed to create contract');
+      setError(msg);
+      toast(msg, 'error');
     } finally {
       setLoading(false);
     }
@@ -91,8 +96,8 @@ export default function NewContract() {
             onClick={() => setMode('paste')}
             className={`flex-1 px-6 py-4 text-center font-medium transition-all duration-200 relative ${
               mode === 'paste'
-                ? 'text-[#4ade80]'
-                : 'text-gray-400 hover:text-gray-200 hover:bg-white/5'
+                ? 'text-emerald-700 dark:text-[#4ade80]'
+                : 'text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/5'
             }`}
           >
             <span className="mr-2">📝</span>
@@ -105,8 +110,8 @@ export default function NewContract() {
             onClick={() => setMode('upload')}
             className={`flex-1 px-6 py-4 text-center font-medium transition-all duration-200 relative ${
               mode === 'upload'
-                ? 'text-[#4ade80]'
-                : 'text-gray-400 hover:text-gray-200 hover:bg-white/5'
+                ? 'text-emerald-700 dark:text-[#4ade80]'
+                : 'text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/5'
             }`}
           >
             <span className="mr-2">📎</span>
@@ -119,14 +124,14 @@ export default function NewContract() {
 
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
           {error && (
-            <div className="p-4 bg-ethiopian-red/10 border border-ethiopian-red/30 rounded-xl text-sm text-[#fb7185] animate-fade-in">
+            <div className="p-4 bg-ethiopian-red/10 border border-ethiopian-red/30 rounded-xl text-sm text-red-700 dark:text-[#fb7185] animate-fade-in">
               {error}
             </div>
           )}
 
           {/* Title */}
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1.5">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
               Contract Title
             </label>
             <input
@@ -141,7 +146,7 @@ export default function NewContract() {
 
           {/* Language */}
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1.5">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
               Language
             </label>
             <div className="flex gap-3">
@@ -150,8 +155,8 @@ export default function NewContract() {
                 onClick={() => setLanguage('ENGLISH')}
                 className={`flex-1 px-4 py-3 rounded-xl border font-medium transition-all duration-200 ${
                   language === 'ENGLISH'
-                    ? 'border-ethiopian-green bg-ethiopian-green/15 text-[#4ade80] shadow-flag-glow'
-                    : 'border-white/15 text-gray-400 hover:border-white/30 hover:text-gray-200'
+                    ? 'border-ethiopian-green bg-ethiopian-green/15 text-emerald-700 dark:text-[#4ade80] shadow-flag-glow'
+                    : 'border-gray-300 dark:border-white/15 text-gray-600 dark:text-gray-400 hover:border-gray-400 dark:hover:border-white/30 hover:text-gray-800 dark:text-gray-200'
                 }`}
               >
                 🇬🇧 English
@@ -161,8 +166,8 @@ export default function NewContract() {
                 onClick={() => setLanguage('AMHARIC')}
                 className={`flex-1 px-4 py-3 rounded-xl border font-medium transition-all duration-200 ${
                   language === 'AMHARIC'
-                    ? 'border-ethiopian-green bg-ethiopian-green/15 text-[#4ade80] shadow-flag-glow'
-                    : 'border-white/15 text-gray-400 hover:border-white/30 hover:text-gray-200'
+                    ? 'border-ethiopian-green bg-ethiopian-green/15 text-emerald-700 dark:text-[#4ade80] shadow-flag-glow'
+                    : 'border-gray-300 dark:border-white/15 text-gray-600 dark:text-gray-400 hover:border-gray-400 dark:hover:border-white/30 hover:text-gray-800 dark:text-gray-200'
                 }`}
               >
                 🇪🇹 አማርኛ
@@ -173,7 +178,7 @@ export default function NewContract() {
           {/* Paste Mode */}
           {mode === 'paste' && (
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1.5">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                 Contract Text
               </label>
               <textarea
@@ -185,7 +190,7 @@ export default function NewContract() {
                 required
               />
               {content && (
-                <p className="text-xs text-gray-500 mt-2">
+                <p className="text-xs text-gray-600 dark:text-gray-500 mt-2">
                   {content.length.toLocaleString()} characters
                 </p>
               )}
@@ -195,7 +200,7 @@ export default function NewContract() {
           {/* Upload Mode */}
           {mode === 'upload' && (
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1.5">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                 Contract File
               </label>
               <div
@@ -208,7 +213,7 @@ export default function NewContract() {
                     ? 'border-ethiopian-green bg-ethiopian-green/10 shadow-flag-glow'
                     : file
                       ? 'border-ethiopian-green bg-ethiopian-green/10'
-                      : 'border-white/20 hover:border-ethiopian-green/60 hover:bg-white/5'
+                      : 'border-gray-300 dark:border-white/20 hover:border-ethiopian-green/60 hover:bg-white dark:bg-white/5'
                 }`}
               >
                 <input
@@ -222,8 +227,8 @@ export default function NewContract() {
                 {file ? (
                   <div className="space-y-2">
                     <div className="text-4xl">📄</div>
-                    <p className="font-medium text-gray-100">{file.name}</p>
-                    <p className="text-sm text-gray-400">
+                    <p className="font-medium text-gray-900 dark:text-gray-100">{file.name}</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
                       {(file.size / 1024 / 1024).toFixed(2)} MB
                     </p>
                     <button
@@ -232,7 +237,7 @@ export default function NewContract() {
                         e.stopPropagation();
                         setFile(null);
                       }}
-                      className="text-sm text-[#fb7185] hover:underline"
+                      className="text-sm text-red-700 dark:text-[#fb7185] hover:underline"
                     >
                       Remove
                     </button>
@@ -240,10 +245,10 @@ export default function NewContract() {
                 ) : (
                   <div className="space-y-3">
                     <div className="text-4xl">📂</div>
-                    <p className="font-medium text-gray-200">
+                    <p className="font-medium text-gray-800 dark:text-gray-200">
                       Drop your contract here or click to browse
                     </p>
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-gray-600 dark:text-gray-500">
                       Supports PDF, DOC, DOCX, TXT, PNG, JPEG (max 30MB)
                     </p>
                   </div>
@@ -286,8 +291,8 @@ export default function NewContract() {
 
       {/* Tips */}
       <div className="mt-8 p-6 bg-ethiopian-yellow/10 border border-ethiopian-yellow/25 rounded-2xl">
-        <h3 className="font-semibold text-ethiopian-yellow mb-2">💡 Tips for Best Results</h3>
-        <ul className="text-sm text-yellow-100/80 space-y-1.5">
+        <h3 className="font-semibold text-yellow-700 dark:text-ethiopian-yellow mb-2">💡 Tips for Best Results</h3>
+        <ul className="text-sm text-gray-800 dark:text-yellow-100/80 space-y-1.5">
           <li>• Include the complete contract text for thorough analysis</li>
           <li>• The AI can analyze contracts in both English and Amharic (አማርኛ)</li>
           <li>• Results will highlight unfavorable clauses in red and favorable ones in green</li>

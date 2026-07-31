@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { authService } from '../services/auth';
+import { getErrorMessage } from '../services/api';
+import { useToast } from '../components/ToastProvider';
 
 export default function VerifyEmail() {
+  const toast = useToast();
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token') ?? '';
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
@@ -15,6 +18,7 @@ export default function VerifyEmail() {
       if (!token) {
         setStatus('error');
         setMessage('Missing verification token. Please use the link from your email.');
+        toast('Missing verification token. Please use the link from your email.', 'error');
         return;
       }
       try {
@@ -22,11 +26,14 @@ export default function VerifyEmail() {
         if (!cancelled) {
           setStatus('success');
           setMessage(res.message);
+          toast(res.message, 'success');
         }
       } catch (err: any) {
         if (!cancelled) {
+          const msg = getErrorMessage(err, 'Verification failed. Please try again.');
           setStatus('error');
-          setMessage(err.response?.data?.message || 'Verification failed. Please try again.');
+          setMessage(msg);
+          toast(msg, 'error');
         }
       }
     })();
@@ -34,7 +41,7 @@ export default function VerifyEmail() {
     return () => {
       cancelled = true;
     };
-  }, [token]);
+  }, [token, toast]);
 
   return (
     <div className="min-h-[70vh] flex items-center justify-center p-4 relative overflow-hidden">
@@ -48,18 +55,18 @@ export default function VerifyEmail() {
             <span className="text-white text-2xl font-bold drop-shadow">ኢ</span>
           </div>
           <div className="text-5xl mb-4">
-            {status === 'loading' && <div className="w-12 h-12 mx-auto border-4 border-white/10 border-t-ethiopian-green rounded-full animate-spin" />}
+            {status === 'loading' && <div className="w-12 h-12 mx-auto border-4 border-gray-300 dark:border-white/10 border-t-ethiopian-green rounded-full animate-spin" />}
             {status === 'success' && '✅'}
             {status === 'error' && '⚠️'}
           </div>
 
-          <h1 className="text-2xl font-display font-bold text-white mb-3">
+          <h1 className="text-2xl font-display font-bold text-gray-900 dark:text-white mb-3">
             {status === 'loading' && 'Verifying your email...'}
             {status === 'success' && 'Email Verified'}
             {status === 'error' && 'Verification Failed'}
           </h1>
 
-          <p className="text-gray-400 mb-6">{message}</p>
+          <p className="text-gray-600 dark:text-gray-400 mb-6">{message}</p>
 
           {status !== 'loading' && (
             <Link

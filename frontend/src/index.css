@@ -7,14 +7,24 @@
     scroll-behavior: smooth;
   }
 
+  /* Light mode (default) */
   body {
-    @apply bg-ethiopian-dark text-gray-100 font-body antialiased;
+    @apply bg-[#f4f6f3] text-gray-900 font-body antialiased;
+    background-image:
+      radial-gradient(1200px 600px at 10% -10%, rgba(0, 150, 64, 0.08), transparent 60%),
+      radial-gradient(900px 500px at 100% 0%, rgba(239, 205, 46, 0.08), transparent 55%),
+      radial-gradient(1000px 600px at 50% 120%, rgba(218, 9, 47, 0.06), transparent 60%);
+    background-attachment: fixed;
+    min-height: 100vh;
+  }
+
+  /* Dark mode */
+  .dark body {
+    @apply bg-ethiopian-dark text-gray-100;
     background-image:
       radial-gradient(1200px 600px at 10% -10%, rgba(0, 150, 64, 0.18), transparent 60%),
       radial-gradient(900px 500px at 100% 0%, rgba(239, 205, 46, 0.1), transparent 55%),
       radial-gradient(1000px 600px at 50% 120%, rgba(218, 9, 47, 0.12), transparent 60%);
-    background-attachment: fixed;
-    min-height: 100vh;
   }
 
   ::selection {
@@ -28,10 +38,10 @@
     background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    @apply bg-white/15 rounded-full;
+    @apply bg-gray-400/40 dark:bg-white/15 rounded-full;
   }
   ::-webkit-scrollbar-thumb:hover {
-    @apply bg-white/30;
+    @apply bg-gray-500/50 dark:bg-white/30;
   }
 }
 
@@ -75,7 +85,10 @@
 
   /* ---------- Cards ---------- */
   .glass-card {
-    @apply bg-white/[0.04] backdrop-blur-xl border border-white/10;
+    @apply bg-white/70 dark:bg-white/[0.04] backdrop-blur-xl border border-gray-200 dark:border-white/10;
+    box-shadow: 0 8px 32px -12px rgba(0, 0, 0, 0.18);
+  }
+  .dark .glass-card {
     box-shadow: 0 8px 32px -12px rgba(0, 0, 0, 0.55);
   }
 
@@ -90,10 +103,12 @@
   }
 
   .btn-secondary {
-    @apply px-6 py-3 rounded-xl font-semibold text-gray-200
-           bg-white/5 border border-white/15
-           hover:border-ethiopian-yellow/60 hover:text-ethiopian-yellow hover:bg-white/10
-           active:scale-[0.98] transition-all duration-200 ease-out;
+    @apply px-6 py-3 rounded-xl font-semibold text-gray-800
+           bg-white border border-gray-300
+           hover:border-ethiopian-green hover:text-ethiopian-green hover:bg-ethiopian-green/5
+           active:scale-[0.98] transition-all duration-200 ease-out
+           dark:text-gray-200 dark:bg-white/5 dark:border-white/15
+           dark:hover:border-ethiopian-yellow/60 dark:hover:text-ethiopian-yellow dark:hover:bg-white/10;
   }
 
   .btn-danger {
@@ -106,27 +121,28 @@
 
   /* ---------- Forms ---------- */
   .input-field {
-    @apply w-full px-4 py-3 rounded-xl border border-white/15 bg-white/[0.05]
+    @apply w-full px-4 py-3 rounded-xl border border-gray-300 bg-white
            focus:border-ethiopian-green focus:ring-2 focus:ring-ethiopian-green/30
            outline-none transition-all duration-200
-           placeholder:text-gray-500 text-gray-100;
+           placeholder:text-gray-500 text-gray-900
+           dark:border-white/15 dark:bg-white/[0.05] dark:placeholder:text-gray-500 dark:text-gray-100;
   }
 
   /* ---------- Badges ---------- */
   .badge-favorable {
-    @apply px-3 py-1 rounded-full text-xs font-semibold bg-ethiopian-green/20 text-[#4ade80] border border-ethiopian-green/30;
+    @apply px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700 border border-emerald-600/30 dark:bg-ethiopian-green/20 dark:text-[#4ade80] dark:border-ethiopian-green/30;
   }
 
   .badge-neutral {
-    @apply px-3 py-1 rounded-full text-xs font-semibold bg-white/10 text-gray-300 border border-white/15;
+    @apply px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-700 border border-gray-300 dark:bg-white/10 dark:text-gray-300 dark:border-white/15;
   }
 
   .badge-unfavorable {
-    @apply px-3 py-1 rounded-full text-xs font-semibold bg-ethiopian-red/20 text-[#fb7185] border border-ethiopian-red/30;
+    @apply px-3 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700 border border-red-600/30 dark:bg-ethiopian-red/20 dark:text-[#fb7185] dark:border-ethiopian-red/30;
   }
 
   .badge-risky {
-    @apply px-3 py-1 rounded-full text-xs font-semibold bg-orange-500/20 text-orange-300 border border-orange-500/30;
+    @apply px-3 py-1 rounded-full text-xs font-semibold bg-orange-100 text-orange-700 border border-orange-500/40 dark:bg-orange-500/20 dark:text-orange-300 dark:border-orange-500/30;
   }
 
   /* ---------- Layout helpers ---------- */
@@ -135,24 +151,50 @@
   }
 
   .section-title {
-    @apply text-3xl font-display font-bold text-white tracking-tight;
+    @apply text-3xl font-display font-bold text-gray-900 dark:text-white tracking-tight;
   }
 
   .section-subtitle {
-    @apply text-sm text-gray-400 mt-1.5;
+    @apply text-sm text-gray-600 dark:text-gray-400 mt-1.5;
   }
 
   .hero-grid {
     background-image:
+      linear-gradient(rgba(0, 0, 0, 0.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0, 0, 0, 0.06) 1px, transparent 1px);
+    background-size: 48px 48px;
+  }
+  .dark .hero-grid {
+    background-image:
       linear-gradient(rgba(255, 255, 255, 0.5) 1px, transparent 1px),
       linear-gradient(90deg, rgba(255, 255, 255, 0.5) 1px, transparent 1px);
-    background-size: 48px 48px;
   }
 
   /* ---------- Animations ---------- */
   @keyframes flag-wave {
     0%, 100% { background-position: 0% 50%; }
     50% { background-position: 100% 50%; }
+  }
+
+  /* ---------- Toasts ---------- */
+  .toast-animate {
+    animation: toast-in 0.35s cubic-bezier(0.21, 1.02, 0.73, 1) forwards;
+  }
+
+  @keyframes toast-in {
+    from {
+      opacity: 0;
+      transform: translateX(24px) scale(0.97);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0) scale(1);
+    }
+  }
+
+  @keyframes toast-progress {
+    from { width: 100%; }
+    to { width: 0%; }
   }
 
   @media (prefers-reduced-motion: reduce) {

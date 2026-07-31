@@ -36,8 +36,8 @@ export default function ForgotPassword() {
           <div className="w-16 h-16 rounded-2xl ethiopian-flag-gradient shadow-flag-glow mx-auto mb-4 flex items-center justify-center animate-float">
             <span className="text-white text-2xl font-bold drop-shadow">ኢ</span>
           </div>
-          <h1 className="text-3xl font-display font-bold text-white tracking-tight">Reset Password</h1>
-          <p className="text-gray-400 mt-2">We'll email you a link to choose a new one</p>
+          <h1 className="text-3xl font-display font-bold text-gray-900 dark:text-white tracking-tight">Reset Password</h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-2">We'll email you a link to choose a new one</p>
         </div>
 
         <div className="glass-card rounded-2xl p-8">
@@ -45,7 +45,7 @@ export default function ForgotPassword() {
           {sent ? (
             <div className="text-center animate-fade-in">
               <div className="text-5xl mb-4">📬</div>
-              <p className="text-gray-400 mb-6">
+              <p className="text-gray-600 dark:text-gray-400 mb-6">
                 If that email is registered and verified, a password reset link has been sent to
                 your inbox. Check your email (and spam folder).
               </p>
@@ -62,7 +62,7 @@ export default function ForgotPassword() {
               )}
 
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1.5">Email</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Email</label>
                 <input
                   type="email"
                   value={email}
@@ -89,7 +89,7 @@ export default function ForgotPassword() {
               </button>
 
               <div className="text-center pt-2">
-                <Link to="/login" className="text-sm text-[#4ade80] font-semibold hover:underline transition-colors">
+                <Link to="/login" className="text-sm text-emerald-700 dark:text-[#4ade80] font-semibold hover:underline transition-colors">
                   ← Back to login
                 </Link>
               </div>

@@ -1,9 +1,12 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { authService } from '../services/auth';
+import { getErrorMessage } from '../services/api';
+import { useToast } from '../components/ToastProvider';
 import type { SignupResponse } from '../types';
 
 export default function Signup() {
+  const toast = useToast();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -18,9 +21,12 @@ export default function Signup() {
 
     try {
       const result = await authService.signup(email, password, name || undefined);
+      toast('Account created! Check your email to verify.', 'success');
       setSignupResult(result);
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Signup failed. Please try again.');
+      const msg = getErrorMessage(err, 'Signup failed. Please try again.');
+      setError(msg);
+      toast(msg, 'error');
     } finally {
       setLoading(false);
     }
@@ -40,29 +46,29 @@ export default function Signup() {
               <span className="text-white text-2xl font-bold drop-shadow">ኢ</span>
             </div>
             <div className="text-5xl mb-4">📧</div>
-            <h1 className="text-2xl font-display font-bold text-white mb-3">
+            <h1 className="text-2xl font-display font-bold text-gray-900 dark:text-white mb-3">
               Verify Your Email
             </h1>
-            <p className="text-gray-400 mb-4">{signupResult.message}</p>
+            <p className="text-gray-600 dark:text-gray-400 mb-4">{signupResult.message}</p>
 
             {signupResult.devVerificationUrl && (
               <div className="mb-5 p-4 bg-ethiopian-yellow/10 border border-ethiopian-yellow/30 rounded-xl text-sm">
-                <p className="text-ethiopian-yellow font-medium mb-2">
+                <p className="text-yellow-700 dark:text-ethiopian-yellow font-medium mb-2">
                   ⚠️ Development mode: email service not configured.
                 </p>
-                <p className="text-gray-300 mb-2">Use this link to verify:</p>
+                <p className="text-gray-700 dark:text-gray-300 mb-2">Use this link to verify:</p>
                 <a
                   href={signupResult.devVerificationUrl}
-                  className="text-[#4ade80] font-semibold hover:underline break-all"
+                  className="text-emerald-700 dark:text-[#4ade80] font-semibold hover:underline break-all"
                 >
                   {signupResult.devVerificationUrl}
                 </a>
               </div>
             )}
 
-            <p className="text-sm text-gray-400 mb-6">
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
               Already verified?{' '}
-              <Link to="/login" className="text-[#4ade80] font-semibold hover:underline transition-colors">
+              <Link to="/login" className="text-emerald-700 dark:text-[#4ade80] font-semibold hover:underline transition-colors">
                 Sign in
               </Link>
             </p>
@@ -90,10 +96,10 @@ export default function Signup() {
           <div className="w-20 h-20 rounded-2xl ethiopian-flag-gradient shadow-flag-glow mx-auto mb-5 flex items-center justify-center animate-float">
             <span className="text-white text-3xl font-bold drop-shadow-lg">ኢ</span>
           </div>
-          <h1 className="text-3xl font-display font-bold text-white tracking-tight">
+          <h1 className="text-3xl font-display font-bold text-gray-900 dark:text-white tracking-tight">
             Create Account
           </h1>
-          <p className="text-gray-400 mt-2">
+          <p className="text-gray-600 dark:text-gray-400 mt-2">
             Start analyzing your contracts with AI
           </p>
         </div>
@@ -108,8 +114,8 @@ export default function Signup() {
             )}
 
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1.5">
-                Name <span className="text-gray-500">(optional)</span>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                Name <span className="text-gray-600 dark:text-gray-500">(optional)</span>
               </label>
               <input
                 type="text"
@@ -121,7 +127,7 @@ export default function Signup() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1.5">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                 Email
               </label>
               <input
@@ -135,7 +141,7 @@ export default function Signup() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1.5">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                 Password
               </label>
               <input
@@ -166,9 +172,9 @@ export default function Signup() {
           </form>
 
           <div className="mt-6 text-center">
-            <p className="text-sm text-gray-400">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
               Already have an account?{' '}
-              <Link to="/login" className="text-[#4ade80] font-semibold hover:underline transition-colors">
+              <Link to="/login" className="text-emerald-700 dark:text-[#4ade80] font-semibold hover:underline transition-colors">
                 Sign in
               </Link>
             </p>

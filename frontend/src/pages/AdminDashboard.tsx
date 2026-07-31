@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import QRCode from 'qrcode';
 import { adminService } from '../services/admin';
 import { authService } from '../services/auth';
+import { getErrorMessage } from '../services/api';
+import { useToast } from '../components/ToastProvider';
 import type { AdminStats, AdminUser, RequestLog, SecurityLog, SuperAdminStatus, SystemHealth } from '../types';
 import LoadingSpinner from '../components/LoadingSpinner';
 
@@ -18,20 +20,21 @@ function timeAgo(dateStr: string | null): string {
 }
 
 const METHOD_COLORS: Record<string, string> = {
-  GET: 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30',
-  POST: 'bg-blue-500/15 text-blue-300 border border-blue-500/30',
-  PUT: 'bg-yellow-500/15 text-yellow-300 border border-yellow-500/30',
-  PATCH: 'bg-orange-500/15 text-orange-300 border border-orange-500/30',
-  DELETE: 'bg-red-500/15 text-red-300 border border-red-500/30',
+  GET: 'bg-emerald-100 text-emerald-700 border border-emerald-500/30 dark:bg-emerald-500/15 dark:text-emerald-300 dark:border-emerald-500/30',
+  POST: 'bg-blue-100 text-blue-700 border border-blue-500/30 dark:bg-blue-500/15 dark:text-blue-300 dark:border-blue-500/30',
+  PUT: 'bg-yellow-100 text-yellow-700 border border-yellow-500/30 dark:bg-yellow-500/15 dark:text-yellow-300 dark:border-yellow-500/30',
+  PATCH: 'bg-orange-100 text-orange-700 border border-orange-500/30 dark:bg-orange-500/15 dark:text-orange-300 dark:border-orange-500/30',
+  DELETE: 'bg-red-100 text-red-700 border border-red-500/30 dark:bg-red-500/15 dark:text-red-300 dark:border-red-500/30',
 };
 
 function statusColor(code: number): string {
-  if (code < 300) return 'text-emerald-400';
-  if (code < 500) return 'text-yellow-400';
-  return 'text-red-400';
+  if (code < 300) return 'text-emerald-600 dark:text-emerald-400';
+  if (code < 500) return 'text-yellow-700 dark:text-yellow-400';
+  return 'text-red-600 dark:text-red-400';
 }
 
 export default function AdminDashboard() {
+  const toast = useToast();
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [requests, setRequests] = useState<RequestLog[]>([]);
@@ -77,12 +80,15 @@ export default function AdminDashboard() {
       });
       setUsers((prev) => [res.user, ...prev]);
       setNotice({ type: 'success', text: res.message });
+      toast(res.message, 'success');
       setShowCreateForm(false);
       setNewEmail('');
       setNewName('');
       setNewPassword('');
     } catch (err: any) {
-      setCreateError(err.response?.data?.message || 'Failed to create admin user.');
+      const msg = getErrorMessage(err, 'Failed to create admin user.');
+      setCreateError(msg);
+      toast(msg, 'error');
     } finally {
       setCreating(false);
     }
@@ -95,15 +101,13 @@ export default function AdminDashboard() {
     try {
       await adminService.updateUserRole(user.id, target);
       setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, isAdmin: target } : u)));
-      setNotice({
-        type: 'success',
-        text: target ? `${user.email} is now an admin.` : `${user.email} is no longer an admin.`,
-      });
+      const msg = target ? `${user.email} is now an admin.` : `${user.email} is no longer an admin.`;
+      setNotice({ type: 'success', text: msg });
+      toast(msg, 'success');
     } catch (err: any) {
-      setNotice({
-        type: 'error',
-        text: err.response?.data?.message || 'Failed to update role.',
-      });
+      const msg = getErrorMessage(err, 'Failed to update role.');
+      setNotice({ type: 'error', text: msg });
+      toast(msg, 'error');
     } finally {
       setBusyId(null);
     }
@@ -115,10 +119,9 @@ export default function AdminDashboard() {
     setNotice(null);
     try {
       const res = await adminService.transferSuperAdmin(user.id);
-      setNotice({
-        type: 'success',
-        text: `${res.message} You are now a regular admin and will be signed out of the dashboard.`,
-      });
+      const msg = `${res.message} You are now a regular admin and will be signed out of the dashboard.`;
+      setNotice({ type: 'success', text: msg });
+      toast(msg, 'success');
       // Reflect the demotion locally so the AdminRoute redirects after reload.
       if (currentUser) {
         localStorage.setItem('user', JSON.stringify({ ...currentUser, isSuperAdmin: false }));
@@ -127,10 +130,9 @@ export default function AdminDashboard() {
         window.location.href = '/';
       }, 2200);
     } catch (err: any) {
-      setNotice({
-        type: 'error',
-        text: err.response?.data?.message || 'Failed to transfer super admin role.',
-      });
+      const msg = getErrorMessage(err, 'Failed to transfer super admin role.');
+      setNotice({ type: 'error', text: msg });
+      toast(msg, 'error');
     } finally {
       setBusyId(null);
     }
@@ -144,11 +146,11 @@ export default function AdminDashboard() {
       const res = await adminService.deleteUser(user.id);
       setUsers((prev) => prev.filter((u) => u.id !== user.id));
       setNotice({ type: 'success', text: res.message });
+      toast(res.message, 'success');
     } catch (err: any) {
-      setNotice({
-        type: 'error',
-        text: err.response?.data?.message || 'Failed to delete user.',
-      });
+      const msg = getErrorMessage(err, 'Failed to delete user.');
+      setNotice({ type: 'error', text: msg });
+      toast(msg, 'error');
     } finally {
       setBusyId(null);
     }
@@ -165,7 +167,9 @@ export default function AdminDashboard() {
       const qr = await QRCode.toDataURL(res.otpauthUrl, { width: 220, margin: 2 });
       setTwoFaQr(qr);
     } catch (err: any) {
-      setTwoFaError(err.response?.data?.message || 'Failed to start 2FA setup.');
+      const msg = getErrorMessage(err, 'Failed to start 2FA setup.');
+      setTwoFaError(msg);
+      toast(msg, 'error');
     } finally {
       setTwoFaBusy(false);
     }
@@ -178,6 +182,7 @@ export default function AdminDashboard() {
     try {
       const res = await authService.enable2fa(twoFaCode);
       setTwoFaNotice(res.message);
+      toast(res.message, 'success');
       // Refresh the stored user so twoFactorEnabled is accurate.
       if (currentUser) {
         localStorage.setItem('user', JSON.stringify({ ...currentUser, twoFactorEnabled: true }));
@@ -187,7 +192,9 @@ export default function AdminDashboard() {
       setTwoFaUrl(null);
       setTwoFaQr(null);
     } catch (err: any) {
-      setTwoFaError(err.response?.data?.message || 'Failed to enable 2FA.');
+      const msg = getErrorMessage(err, 'Failed to enable 2FA.');
+      setTwoFaError(msg);
+      toast(msg, 'error');
     } finally {
       setTwoFaBusy(false);
     }
@@ -200,12 +207,15 @@ export default function AdminDashboard() {
     try {
       const res = await authService.disable2fa(twoFaCode);
       setTwoFaNotice(res.message);
+      toast(res.message, 'success');
       if (currentUser) {
         localStorage.setItem('user', JSON.stringify({ ...currentUser, twoFactorEnabled: false }));
       }
       setTwoFaCode('');
     } catch (err: any) {
-      setTwoFaError(err.response?.data?.message || 'Failed to disable 2FA.');
+      const msg = getErrorMessage(err, 'Failed to disable 2FA.');
+      setTwoFaError(msg);
+      toast(msg, 'error');
     } finally {
       setTwoFaBusy(false);
     }
@@ -217,11 +227,11 @@ export default function AdminDashboard() {
     try {
       const res = await adminService.resendVerification(user.id);
       setNotice({ type: 'success', text: res.message });
+      toast(res.message, 'success');
     } catch (err: any) {
-      setNotice({
-        type: 'error',
-        text: err.response?.data?.message || 'Failed to send verification email.',
-      });
+      const msg = getErrorMessage(err, 'Failed to send verification email.');
+      setNotice({ type: 'error', text: msg });
+      toast(msg, 'error');
     } finally {
       setBusyId(null);
     }
@@ -283,26 +293,26 @@ export default function AdminDashboard() {
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 animate-fade-in">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-display font-bold text-white flex items-center gap-3">
+        <h1 className="text-3xl font-display font-bold text-gray-900 dark:text-white flex items-center gap-3">
           <span className="w-10 h-10 rounded-xl bg-gradient-to-br from-ethiopian-green to-ethiopian-red text-white flex items-center justify-center text-lg shadow-flag-glow">🛡️</span>
           Admin Dashboard
         </h1>
-        <p className="text-gray-400 mt-2">How many people are using the app and how many requests have been made.</p>
+        <p className="text-gray-600 dark:text-gray-400 mt-2">How many people are using the app and how many requests have been made.</p>
       </div>
 
       {/* System health card */}
       <div className="glass-card rounded-2xl p-6 mb-8">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="font-semibold text-gray-100">🩺 System Health</h2>
-          <span className="text-xs text-gray-500">Checked {health ? new Date(health.db.checkedAt).toLocaleTimeString() : '—'}</span>
+          <h2 className="font-semibold text-gray-900 dark:text-gray-100">🩺 System Health</h2>
+          <span className="text-xs text-gray-600 dark:text-gray-500">Checked {health ? new Date(health.db.checkedAt).toLocaleTimeString() : '—'}</span>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Database */}
           <div className="flex items-center gap-3">
             <span className={`w-3 h-3 rounded-full ${health?.db.status === 'up' ? 'bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.8)]' : 'bg-red-500'}`} />
             <div>
-              <p className="text-sm font-medium text-gray-100">Database</p>
-              <p className="text-xs text-gray-400">
+              <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Database</p>
+              <p className="text-xs text-gray-600 dark:text-gray-400">
                 {health?.db.status === 'up' ? `Connected · ${health.db.latencyMs}ms` : 'Unreachable'}
               </p>
             </div>
@@ -311,8 +321,8 @@ export default function AdminDashboard() {
           <div className="flex items-center gap-3">
             <span className="text-lg">🗑️</span>
             <div>
-              <p className="text-sm font-medium text-gray-100">Last cleanup</p>
-              <p className="text-xs text-gray-400">
+              <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Last cleanup</p>
+              <p className="text-xs text-gray-600 dark:text-gray-400">
                 {health?.cleanup.lastRunAt ? `${timeAgo(health.cleanup.lastRunAt)} · ${health.cleanup.lastDeletedCount} deleted` : 'Not run yet'}
               </p>
             </div>
@@ -321,8 +331,8 @@ export default function AdminDashboard() {
           <div className="flex items-center gap-3">
             <span className="text-lg">✅</span>
             <div>
-              <p className="text-sm font-medium text-gray-100">Cleanup status</p>
-              <p className="text-xs text-gray-400">
+              <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Cleanup status</p>
+              <p className="text-xs text-gray-600 dark:text-gray-400">
                 {!health
                   ? '—'
                   : health.cleanup.lastRunSucceeded === null
@@ -337,8 +347,8 @@ export default function AdminDashboard() {
           <div className="flex items-center gap-3">
             <span className="text-lg">⏳</span>
             <div>
-              <p className="text-sm font-medium text-gray-100">Retention</p>
-              <p className="text-xs text-gray-400">
+              <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Retention</p>
+              <p className="text-xs text-gray-600 dark:text-gray-400">
                 {health ? `${health.cleanup.retentionDays} days · every ${health.cleanup.intervalHours}h` : '—'}
               </p>
             </div>
@@ -349,22 +359,22 @@ export default function AdminDashboard() {
       {/* Super admin settings card */}
       <div className="glass-card rounded-2xl p-6 mb-8">
         <div className="flex items-center gap-2 mb-4">
-          <h2 className="font-semibold text-gray-100">👑 Super Admin</h2>
-          <span className="px-2 py-0.5 rounded-md text-xs font-bold bg-ethiopian-yellow/20 text-ethiopian-yellow border border-ethiopian-yellow/30">Settings</span>
+          <h2 className="font-semibold text-gray-900 dark:text-gray-100">👑 Super Admin</h2>
+          <span className="px-2 py-0.5 rounded-md text-xs font-bold bg-yellow-100 text-yellow-700 border border-ethiopian-yellow/30 dark:bg-ethiopian-yellow/20 dark:text-ethiopian-yellow">Settings</span>
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {/* Current holder */}
-          <div className="p-4 rounded-xl bg-white/[0.03] border border-white/10">
-            <p className="text-xs text-gray-500 uppercase font-semibold mb-2">Current holder</p>
+          <div className="p-4 rounded-xl bg-gray-100 dark:bg-white/[0.03] border border-gray-200 dark:border-white/10">
+            <p className="text-xs text-gray-600 dark:text-gray-500 uppercase font-semibold mb-2">Current holder</p>
             {superAdminStatus?.superAdmin ? (
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white font-bold shrink-0">
                   {(superAdminStatus.superAdmin.name || superAdminStatus.superAdmin.email)[0].toUpperCase()}
                 </div>
                 <div className="min-w-0">
-                  <p className="font-medium text-gray-100 truncate">{superAdminStatus.superAdmin.name || superAdminStatus.superAdmin.email}</p>
-                  <p className="text-xs text-gray-400 truncate">{superAdminStatus.superAdmin.email}</p>
-                  <p className="text-xs text-gray-500">Since {new Date(superAdminStatus.superAdmin.createdAt).toLocaleDateString()}</p>
+                  <p className="font-medium text-gray-900 dark:text-gray-100 truncate">{superAdminStatus.superAdmin.name || superAdminStatus.superAdmin.email}</p>
+                  <p className="text-xs text-gray-600 dark:text-gray-400 truncate">{superAdminStatus.superAdmin.email}</p>
+                  <p className="text-xs text-gray-600 dark:text-gray-500">Since {new Date(superAdminStatus.superAdmin.createdAt).toLocaleDateString()}</p>
                 </div>
               </div>
             ) : (
@@ -372,22 +382,22 @@ export default function AdminDashboard() {
             )}
           </div>
           {/* Auto recovery */}
-          <div className="p-4 rounded-xl bg-white/[0.03] border border-white/10">
-            <p className="text-xs text-gray-500 uppercase font-semibold mb-2">Auto-recovery</p>
+          <div className="p-4 rounded-xl bg-gray-100 dark:bg-white/[0.03] border border-gray-200 dark:border-white/10">
+            <p className="text-xs text-gray-600 dark:text-gray-500 uppercase font-semibold mb-2">Auto-recovery</p>
             <p className="text-sm text-gray-200">
               {superAdminStatus?.autoRecovery.enabled ? '🟢 Enabled' : '🔴 Disabled'}
             </p>
-            <p className="text-xs text-gray-400 mt-1">{superAdminStatus?.autoRecovery.description}</p>
+            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">{superAdminStatus?.autoRecovery.description}</p>
           </div>
           {/* Transfer note */}
-          <div className="p-4 rounded-xl bg-white/[0.03] border border-white/10">
-            <p className="text-xs text-gray-500 uppercase font-semibold mb-2">Transferring the role</p>
-            <p className="text-xs text-gray-300">{superAdminStatus?.transferNote}</p>
-            <p className="text-xs text-gray-500 mt-2">Use the 👑 Transfer button in the Users tab.</p>
+          <div className="p-4 rounded-xl bg-gray-100 dark:bg-white/[0.03] border border-gray-200 dark:border-white/10">
+            <p className="text-xs text-gray-600 dark:text-gray-500 uppercase font-semibold mb-2">Transferring the role</p>
+            <p className="text-xs text-gray-700 dark:text-gray-300">{superAdminStatus?.transferNote}</p>
+            <p className="text-xs text-gray-600 dark:text-gray-500 mt-2">Use the 👑 Transfer button in the Users tab.</p>
           </div>
           {/* Two-factor authentication */}
-          <div className="p-4 rounded-xl bg-white/[0.03] border border-white/10">
-            <p className="text-xs text-gray-500 uppercase font-semibold mb-2">Two-factor authentication</p>
+          <div className="p-4 rounded-xl bg-gray-100 dark:bg-white/[0.03] border border-gray-200 dark:border-white/10">
+            <p className="text-xs text-gray-600 dark:text-gray-500 uppercase font-semibold mb-2">Two-factor authentication</p>
             {twoFaNotice && (
               <p className="text-sm text-emerald-400 mb-2">{twoFaNotice}</p>
             )}
@@ -418,11 +428,11 @@ export default function AdminDashboard() {
               </>
             ) : twoFaQr ? (
               <>
-                <p className="text-sm text-gray-300 mb-2">
+                <p className="text-sm text-gray-700 dark:text-gray-300 mb-2">
                   Scan with Google Authenticator or a compatible app, then enter the 6-digit code below.
                 </p>
-                {twoFaQr && <img src={twoFaQr} alt="2FA QR code" className="w-40 h-40 mx-auto mb-2 rounded-lg bg-white p-1 border border-white/15" />}
-                <p className="text-xs text-gray-400 mb-2 break-all">Secret: <code className="font-mono">{twoFaSecret}</code></p>
+                {twoFaQr && <img src={twoFaQr} alt="2FA QR code" className="w-40 h-40 mx-auto mb-2 rounded-lg bg-white p-1 border border-gray-300 dark:border-white/15" />}
+                <p className="text-xs text-gray-600 dark:text-gray-400 mb-2 break-all">Secret: <code className="font-mono">{twoFaSecret}</code></p>
                 <div className="flex gap-2 items-end">
                   <input
                     type="text"
@@ -444,13 +454,13 @@ export default function AdminDashboard() {
               </>
             ) : (
               <>
-                <p className="text-sm text-gray-300 mb-2">
+                <p className="text-sm text-gray-700 dark:text-gray-300 mb-2">
                   Protect the super admin account with time-based one-time codes from your authenticator app.
                 </p>
                 <button
                   onClick={handleSetup2fa}
                   disabled={twoFaBusy}
-                  className="px-3 py-2 rounded-lg text-xs font-semibold text-white bg-white/10 hover:bg-white/20 border border-white/20 transition-colors disabled:opacity-50"
+                  className="px-3 py-2 rounded-lg text-xs font-semibold text-gray-900 dark:text-white bg-gray-200 dark:bg-white/10 hover:bg-white/20 border border-gray-300 dark:border-white/20 transition-colors disabled:opacity-50"
                 >
                   {twoFaBusy ? '...' : '🔐 Set up 2FA'}
                 </button>
@@ -470,8 +480,8 @@ export default function AdminDashboard() {
             <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${card.accent} flex items-center justify-center mb-3 shadow-lg`}>
               <span className="text-sm">{card.emoji}</span>
             </div>
-            <p className="text-2xl font-bold text-white">{card.value.toLocaleString()}</p>
-            <p className="text-xs text-gray-400 mt-0.5">{card.label}</p>
+            <p className="text-2xl font-bold text-gray-900 dark:text-white">{card.value.toLocaleString()}</p>
+            <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">{card.label}</p>
           </div>
         ))}
       </div>
@@ -479,18 +489,18 @@ export default function AdminDashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         {/* Requests per day chart */}
         <div className="glass-card rounded-2xl p-6">
-          <h2 className="font-semibold text-gray-100 mb-4">📊 Requests — Last 7 Days</h2>
+          <h2 className="font-semibold text-gray-900 dark:text-gray-100 mb-4">📊 Requests — Last 7 Days</h2>
           <div className="flex items-end gap-2 h-40">
             {(stats?.requestsByDay ?? []).map((day) => (
               <div key={day.date} className="flex-1 flex flex-col items-center gap-1 group">
-                <span className="text-xs text-gray-300 font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+                <span className="text-xs text-gray-700 dark:text-gray-300 font-medium opacity-0 group-hover:opacity-100 transition-opacity">
                   {day.count}
                 </span>
                 <div
                   className="w-full rounded-t-lg bg-gradient-to-t from-ethiopian-green/70 to-ethiopian-green group-hover:from-ethiopian-green group-hover:to-ethiopian-yellow transition-colors"
                   style={{ height: `${Math.max(4, (day.count / maxDayCount) * 100)}%` }}
                 />
-                <span className="text-[10px] text-gray-500">{day.date.slice(5)}</span>
+                <span className="text-[10px] text-gray-600 dark:text-gray-500">{day.date.slice(5)}</span>
               </div>
             ))}
           </div>
@@ -498,18 +508,18 @@ export default function AdminDashboard() {
 
         {/* Top endpoints */}
         <div className="glass-card rounded-2xl p-6">
-          <h2 className="font-semibold text-gray-100 mb-4">🏆 Top Endpoints (7 days)</h2>
+          <h2 className="font-semibold text-gray-900 dark:text-gray-100 mb-4">🏆 Top Endpoints (7 days)</h2>
           {(stats?.topEndpoints ?? []).length === 0 ? (
-            <p className="text-sm text-gray-500 py-8 text-center">No requests yet</p>
+            <p className="text-sm text-gray-600 dark:text-gray-500 py-8 text-center">No requests yet</p>
           ) : (
             <ul className="space-y-2">
               {stats?.topEndpoints.map((ep) => (
                 <li key={`${ep.method}-${ep.path}`} className="flex items-center gap-3 text-sm">
-                  <span className={`px-2 py-0.5 rounded-md text-xs font-bold ${METHOD_COLORS[ep.method] ?? 'bg-white/10 text-gray-300'}`}>
+                  <span className={`px-2 py-0.5 rounded-md text-xs font-bold ${METHOD_COLORS[ep.method] ?? 'bg-gray-200 dark:bg-white/10 text-gray-700 dark:text-gray-300'}`}>
                     {ep.method}
                   </span>
-                  <span className="flex-1 text-gray-300 font-mono text-xs truncate">{ep.path}</span>
-                  <span className="text-gray-400 text-xs">{ep.count}</span>
+                  <span className="flex-1 text-gray-700 dark:text-gray-300 font-mono text-xs truncate">{ep.path}</span>
+                  <span className="text-gray-600 dark:text-gray-400 text-xs">{ep.count}</span>
                 </li>
               ))}
             </ul>
@@ -521,12 +531,12 @@ export default function AdminDashboard() {
       <div className="glass-card rounded-2xl mb-8 overflow-hidden">
         <div className="h-1 flag-accent" />
         <div className="flex items-center justify-between px-6 py-4">
-          <h2 className="font-semibold text-gray-100">👑 Create Admin User</h2>
+          <h2 className="font-semibold text-gray-900 dark:text-gray-100">👑 Create Admin User</h2>
           <button
             onClick={() => setShowCreateForm((v) => !v)}
             className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
               showCreateForm
-                ? 'bg-white/10 text-gray-300'
+                ? 'bg-gray-200 dark:bg-white/10 text-gray-700 dark:text-gray-300'
                 : 'bg-gradient-to-r from-ethiopian-green to-emerald-600 text-white hover:opacity-90 shadow-flag-glow'
             }`}
           >
@@ -542,7 +552,7 @@ export default function AdminDashboard() {
             )}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1">Name (optional)</label>
+                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Name (optional)</label>
                 <input
                   type="text"
                   value={newName}
@@ -552,7 +562,7 @@ export default function AdminDashboard() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1">Email</label>
+                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Email</label>
                 <input
                   type="email"
                   value={newEmail}
@@ -563,7 +573,7 @@ export default function AdminDashboard() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1">Password</label>
+                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Password</label>
                 <input
                   type="password"
                   value={newPassword}
@@ -576,7 +586,7 @@ export default function AdminDashboard() {
               </div>
             </div>
             <div className="flex items-center justify-between gap-4">
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-gray-600 dark:text-gray-500">
                 The account is created as an admin and marked verified — they can sign in immediately but cannot access this dashboard (super-admin only).
               </p>
               <button
@@ -606,8 +616,8 @@ export default function AdminDashboard() {
             onClick={() => setActiveTab(tab)}
             className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
               activeTab === tab
-                ? 'bg-ethiopian-green/25 text-[#4ade80] shadow-flag-glow'
-                : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-gray-200 border border-white/10'
+                ? 'bg-emerald-100 text-emerald-700 shadow-flag-glow dark:bg-ethiopian-green/25 dark:text-[#4ade80]'
+                : 'bg-white dark:bg-white/5 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:bg-white/10 hover:text-gray-800 dark:hover:text-gray-200 border border-gray-200 dark:border-white/10'
             }`}
           >
             {tab === 'requests' ? '🌐 Recent Requests' : tab === 'users' ? '👥 Users' : '🔐 Security Log'}
@@ -621,7 +631,7 @@ export default function AdminDashboard() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-white/[0.04] text-left text-xs text-gray-400 uppercase">
+                <tr className="bg-gray-100 dark:bg-white/[0.04] text-left text-xs text-gray-600 dark:text-gray-400 uppercase">
                   <th className="px-4 py-3">Method</th>
                   <th className="px-4 py-3">Path</th>
                   <th className="px-4 py-3">Status</th>
@@ -633,21 +643,21 @@ export default function AdminDashboard() {
               </thead>
               <tbody>
                 {requests.length === 0 && (
-                  <tr><td colSpan={7} className="px-4 py-10 text-center text-gray-500">No requests logged yet</td></tr>
+                  <tr><td colSpan={7} className="px-4 py-10 text-center text-gray-600 dark:text-gray-500">No requests logged yet</td></tr>
                 )}
                 {requests.map((r) => (
-                  <tr key={r.id} className="border-t border-white/5 hover:bg-white/[0.03] transition-colors">
+                  <tr key={r.id} className="border-t border-gray-200 dark:border-white/5 hover:bg-gray-100 dark:bg-white/[0.03] transition-colors">
                     <td className="px-4 py-2.5">
-                      <span className={`px-2 py-0.5 rounded-md text-xs font-bold ${METHOD_COLORS[r.method] ?? 'bg-white/10 text-gray-300'}`}>
+                      <span className={`px-2 py-0.5 rounded-md text-xs font-bold ${METHOD_COLORS[r.method] ?? 'bg-gray-200 dark:bg-white/10 text-gray-700 dark:text-gray-300'}`}>
                         {r.method}
                       </span>
                     </td>
-                    <td className="px-4 py-2.5 font-mono text-xs text-gray-300 max-w-[240px] truncate">{r.path}</td>
+                    <td className="px-4 py-2.5 font-mono text-xs text-gray-700 dark:text-gray-300 max-w-[240px] truncate">{r.path}</td>
                     <td className={`px-4 py-2.5 font-bold ${statusColor(r.statusCode)}`}>{r.statusCode}</td>
-                    <td className="px-4 py-2.5 text-gray-400">{r.responseTimeMs != null ? `${r.responseTimeMs}ms` : '—'}</td>
-                    <td className="px-4 py-2.5 text-gray-300">{r.user?.email ?? '—'}</td>
-                    <td className="px-4 py-2.5 text-gray-400">{r.ip ?? '—'}</td>
-                    <td className="px-4 py-2.5 text-gray-500 text-xs">
+                    <td className="px-4 py-2.5 text-gray-600 dark:text-gray-400">{r.responseTimeMs != null ? `${r.responseTimeMs}ms` : '—'}</td>
+                    <td className="px-4 py-2.5 text-gray-700 dark:text-gray-300">{r.user?.email ?? '—'}</td>
+                    <td className="px-4 py-2.5 text-gray-600 dark:text-gray-400">{r.ip ?? '—'}</td>
+                    <td className="px-4 py-2.5 text-gray-600 dark:text-gray-500 text-xs">
                       {new Date(r.createdAt).toLocaleString()}
                     </td>
                   </tr>
@@ -664,7 +674,7 @@ export default function AdminDashboard() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-white/[0.04] text-left text-xs text-gray-400 uppercase">
+                <tr className="bg-gray-100 dark:bg-white/[0.04] text-left text-xs text-gray-600 dark:text-gray-400 uppercase">
                   <th className="px-4 py-3">Action</th>
                   <th className="px-4 py-3">User</th>
                   <th className="px-4 py-3">IP</th>
@@ -673,18 +683,18 @@ export default function AdminDashboard() {
               </thead>
               <tbody>
                 {securityLogs.length === 0 && (
-                  <tr><td colSpan={4} className="px-4 py-10 text-center text-gray-500">No security events logged yet</td></tr>
+                  <tr><td colSpan={4} className="px-4 py-10 text-center text-gray-600 dark:text-gray-500">No security events logged yet</td></tr>
                 )}
                 {securityLogs.map((log) => (
-                  <tr key={log.id} className="border-t border-white/5 hover:bg-white/[0.03] transition-colors">
+                  <tr key={log.id} className="border-t border-gray-200 dark:border-white/5 hover:bg-gray-100 dark:bg-white/[0.03] transition-colors">
                     <td className="px-4 py-2.5">
-                      <span className="px-2 py-0.5 rounded-md text-xs font-bold bg-white/10 text-gray-300">
+                      <span className="px-2 py-0.5 rounded-md text-xs font-bold bg-gray-200 dark:bg-white/10 text-gray-700 dark:text-gray-300">
                         {log.action}
                       </span>
                     </td>
-                    <td className="px-4 py-2.5 text-gray-300">{log.user?.email ?? log.email ?? '—'}</td>
-                    <td className="px-4 py-2.5 text-gray-400">{log.ip ?? '—'}</td>
-                    <td className="px-4 py-2.5 text-gray-500 text-xs">{new Date(log.createdAt).toLocaleString()}</td>
+                    <td className="px-4 py-2.5 text-gray-700 dark:text-gray-300">{log.user?.email ?? log.email ?? '—'}</td>
+                    <td className="px-4 py-2.5 text-gray-600 dark:text-gray-400">{log.ip ?? '—'}</td>
+                    <td className="px-4 py-2.5 text-gray-600 dark:text-gray-500 text-xs">{new Date(log.createdAt).toLocaleString()}</td>
                   </tr>
                 ))}
               </tbody>
@@ -710,7 +720,7 @@ export default function AdminDashboard() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-white/[0.04] text-left text-xs text-gray-400 uppercase">
+                <tr className="bg-gray-100 dark:bg-white/[0.04] text-left text-xs text-gray-600 dark:text-gray-400 uppercase">
                   <th className="px-4 py-3">User</th>
                   <th className="px-4 py-3">Role</th>
                   <th className="px-4 py-3">Verified</th>
@@ -722,21 +732,21 @@ export default function AdminDashboard() {
               </thead>
               <tbody>
                 {users.length === 0 && (
-                  <tr><td colSpan={7} className="px-4 py-10 text-center text-gray-500">No users yet</td></tr>
+                  <tr><td colSpan={7} className="px-4 py-10 text-center text-gray-600 dark:text-gray-500">No users yet</td></tr>
                 )}
                 {users.map((u) => (
-                  <tr key={u.id} className="border-t border-white/5 hover:bg-white/[0.03] transition-colors">
+                  <tr key={u.id} className="border-t border-gray-200 dark:border-white/5 hover:bg-gray-100 dark:bg-white/[0.03] transition-colors">
                     <td className="px-4 py-2.5">
-                      <div className="font-medium text-gray-100">{u.name || '—'}</div>
-                      <div className="text-xs text-gray-400">{u.email}</div>
+                      <div className="font-medium text-gray-900 dark:text-gray-100">{u.name || '—'}</div>
+                      <div className="text-xs text-gray-600 dark:text-gray-400">{u.email}</div>
                     </td>
                     <td className="px-4 py-2.5">
                       {u.isSuperAdmin ? (
-                        <span className="px-2 py-0.5 rounded-md text-xs font-bold bg-ethiopian-yellow/20 text-ethiopian-yellow border border-ethiopian-yellow/30">👑 Super Admin</span>
+                        <span className="px-2 py-0.5 rounded-md text-xs font-bold bg-yellow-100 text-yellow-700 border border-ethiopian-yellow/30 dark:bg-ethiopian-yellow/20 dark:text-ethiopian-yellow">👑 Super Admin</span>
                       ) : u.isAdmin ? (
-                        <span className="px-2 py-0.5 rounded-md text-xs font-bold bg-purple-500/15 text-purple-300 border border-purple-500/30">🛡️ Admin</span>
+                        <span className="px-2 py-0.5 rounded-md text-xs font-bold bg-purple-100 text-purple-700 border border-purple-500/30 dark:bg-purple-500/15 dark:text-purple-300">🛡️ Admin</span>
                       ) : (
-                        <span className="px-2 py-0.5 rounded-md text-xs bg-white/10 text-gray-300">User</span>
+                        <span className="px-2 py-0.5 rounded-md text-xs bg-gray-200 dark:bg-white/10 text-gray-700 dark:text-gray-300">User</span>
                       )}
                     </td>
                     <td className="px-4 py-2.5">
@@ -746,13 +756,13 @@ export default function AdminDashboard() {
                         <span className="text-yellow-400">⏳ Pending</span>
                       )}
                     </td>
-                    <td className="px-4 py-2.5 text-gray-300">{u._count.contracts}</td>
-                    <td className="px-4 py-2.5 text-gray-300">{u._count.analyses}</td>
-                    <td className="px-4 py-2.5 text-gray-500 text-xs">{new Date(u.createdAt).toLocaleDateString()}</td>
+                    <td className="px-4 py-2.5 text-gray-700 dark:text-gray-300">{u._count.contracts}</td>
+                    <td className="px-4 py-2.5 text-gray-700 dark:text-gray-300">{u._count.analyses}</td>
+                    <td className="px-4 py-2.5 text-gray-600 dark:text-gray-500 text-xs">{new Date(u.createdAt).toLocaleDateString()}</td>
                     <td className="px-4 py-2.5">
                       <div className="flex flex-col gap-1 min-w-[120px]">
                         {currentUser?.id === u.id ? (
-                          <span className="px-2 py-1 text-xs text-gray-500 italic">(you — cannot demote yourself)</span>
+                          <span className="px-2 py-1 text-xs text-gray-600 dark:text-gray-500 italic">(you — cannot demote yourself)</span>
                         ) : (
                           <button
                             onClick={() => handleToggleRole(u)}
@@ -770,7 +780,7 @@ export default function AdminDashboard() {
                           <button
                             onClick={() => handleResendVerification(u)}
                             disabled={busyId === u.id}
-                            className="px-2 py-1 rounded-md text-xs font-semibold text-blue-300 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/25 transition-colors disabled:opacity-50"
+                            className="px-2 py-1 rounded-md text-xs font-semibold text-blue-700 bg-blue-100 hover:bg-blue-200 border border-blue-500/25 transition-colors disabled:opacity-50 dark:text-blue-300 dark:bg-blue-500/10 dark:hover:bg-blue-500/20"
                           >
                             {busyId === u.id ? '...' : '📧 Resend verification'}
                           </button>

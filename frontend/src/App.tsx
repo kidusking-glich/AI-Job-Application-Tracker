@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import ScrollProgress from './components/ScrollProgress';
+import ThemeToggle from './components/ThemeToggle';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -15,6 +16,7 @@ import VerifyEmail from './pages/VerifyEmail';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import AdminDashboard from './pages/AdminDashboard';
+import Profile from './pages/Profile';
 
 function Home() {
   return authService.isAuthenticated() ? <Dashboard /> : <Landing />;
@@ -25,6 +27,7 @@ export default function App() {
     <div className="min-h-screen flex flex-col">
       <ScrollProgress />
       <Navbar />
+      <ThemeToggle />
       <main className="flex-1">
         <Routes>
           <Route path="/login" element={<Login />} />
@@ -36,6 +39,7 @@ export default function App() {
           <Route path="/new" element={<ProtectedRoute><NewContract /></ProtectedRoute>} />
           <Route path="/analysis/:id" element={<ProtectedRoute><Analysis /></ProtectedRoute>} />
           <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
+          <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>

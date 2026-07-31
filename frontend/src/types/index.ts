@@ -83,10 +83,10 @@ export interface Analysis {
 }
 
 export const SENTIMENT_COLORS: Record<ClauseSentiment, string> = {
-  FAVORABLE: 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300',
-  NEUTRAL: 'bg-white/10 border-white/20 text-gray-300',
-  UNFAVORABLE: 'bg-red-500/15 border-red-500/40 text-red-300',
-  RISKY: 'bg-orange-500/15 border-orange-500/40 text-orange-300',
+  FAVORABLE: 'bg-emerald-100 border-emerald-500/40 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300',
+  NEUTRAL: 'bg-gray-100 border-gray-300 text-gray-700 dark:bg-white/10 dark:border-white/20 dark:text-gray-300',
+  UNFAVORABLE: 'bg-red-100 border-red-500/40 text-red-700 dark:bg-red-500/15 dark:text-red-300',
+  RISKY: 'bg-orange-100 border-orange-500/40 text-orange-700 dark:bg-orange-500/15 dark:text-orange-300',
 };
 
 export const SENTIMENT_LABELS: Record<ClauseSentiment, string> = {
@@ -104,10 +104,10 @@ export const SENTIMENT_LABELS_AMHARIC: Record<ClauseSentiment, string> = {
 };
 
 export const RISK_COLORS: Record<RiskLevel, string> = {
-  LOW: 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/40',
-  MEDIUM: 'bg-yellow-500/15 text-yellow-300 border border-yellow-500/40',
-  HIGH: 'bg-orange-500/15 text-orange-300 border border-orange-500/40',
-  CRITICAL: 'bg-red-500/15 text-red-300 border border-red-500/40',
+  LOW: 'bg-emerald-100 text-emerald-700 border border-emerald-500/40 dark:bg-emerald-500/15 dark:text-emerald-300 dark:border-emerald-500/40',
+  MEDIUM: 'bg-yellow-100 text-yellow-700 border border-yellow-500/40 dark:bg-yellow-500/15 dark:text-yellow-300 dark:border-yellow-500/40',
+  HIGH: 'bg-orange-100 text-orange-700 border border-orange-500/40 dark:bg-orange-500/15 dark:text-orange-300 dark:border-orange-500/40',
+  CRITICAL: 'bg-red-100 text-red-700 border border-red-500/40 dark:bg-red-500/15 dark:text-red-300 dark:border-red-500/40',
 };
 
 export interface RequestLog {
