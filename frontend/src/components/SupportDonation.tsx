@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { TELEBIRR_PHONE, SUPPORT_MESSAGE } from '../constants/support';
+import { TELEBIRR_PHONE, SUPPORT_MESSAGE, isTelebirrPlaceholder } from '../constants/support';
 
 export default function SupportDonation() {
   const [copied, setCopied] = useState(false);
@@ -12,6 +12,7 @@ export default function SupportDonation() {
   }, []);
 
   const copyNumber = async () => {
+    if (isTelebirrPlaceholder) return;
     try {
       await navigator.clipboard.writeText(TELEBIRR_PHONE);
       setCopied(true);
@@ -40,9 +41,10 @@ export default function SupportDonation() {
         <div className="flex items-center gap-3 flex-shrink-0">
           <button
             onClick={copyNumber}
+            disabled={isTelebirrPlaceholder}
             aria-label="Copy Telebirr phone number"
-            title="Copy number"
-            className="px-5 py-3 rounded-xl border-2 border-emerald-500 bg-white text-emerald-700 font-semibold hover:bg-emerald-500 hover:text-white active:scale-[0.98] transition-all duration-200"
+            title={isTelebirrPlaceholder ? 'Set VITE_TELEBIRR_PHONE to enable copying' : 'Copy number'}
+            className="px-5 py-3 rounded-xl border-2 border-emerald-500 bg-white text-emerald-700 font-semibold hover:bg-emerald-500 hover:text-white active:scale-[0.98] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:text-emerald-700"
           >
             {copied ? '✓ Copied' : '📋 Copy'}
           </button>

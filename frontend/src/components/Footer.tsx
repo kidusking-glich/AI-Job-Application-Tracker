@@ -1,7 +1,4 @@
-import { TELEBIRR_PHONE } from '../constants/support';
-
-// Hide the tel: link when the number is still the "09XX XXX XXX" placeholder
-const isPlaceholder = /[Xx]/.test(TELEBIRR_PHONE);
+import { TELEBIRR_PHONE, isTelebirrPlaceholder } from '../constants/support';
 
 export default function Footer() {
   const supportLabel = `Support: ${TELEBIRR_PHONE}`;
@@ -12,7 +9,7 @@ export default function Footer() {
         <p className="text-center sm:text-left">
           © {new Date().getFullYear()} Ethiopian Contract Reader · የኮንትራት ተንታኝ
         </p>
-        {isPlaceholder ? (
+        {isTelebirrPlaceholder ? (
           <span className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 font-medium">
             <span className="w-5 h-5 rounded-md bg-emerald-600 text-white flex items-center justify-center text-xs font-bold">
               ቴ

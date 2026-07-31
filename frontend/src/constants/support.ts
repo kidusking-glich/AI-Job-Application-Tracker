@@ -5,5 +5,8 @@
  */
 export const TELEBIRR_PHONE: string = import.meta.env.VITE_TELEBIRR_PHONE || '09XX XXX XXX';
 
+/** True while the number is still the "09XX XXX XXX" placeholder (not yet configured). */
+export const isTelebirrPlaceholder: boolean = /[Xx]/.test(TELEBIRR_PHONE);
+
 export const SUPPORT_MESSAGE =
   'Support this project by sending any amount to the Telebirr number below. የኮንትራት ተንታኙን ለመደገፍ በቴሌብር ማንኛውንም መጠን በዚህ ስልክ ቁጥር ይላኩ።';
