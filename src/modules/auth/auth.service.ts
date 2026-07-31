@@ -19,6 +19,7 @@ import { Verify2faDto } from './dto/verify-2fa.dto';
 import { TwoFactorCodeDto } from './dto/two-factor-code.dto';
 import { EmailService } from '../email/email.service';
 import { SecurityLogService } from '../../core/security-log.service';
+import { RateLimiter } from '../../core/rate-limiter';
 import { buildTotpUri, generateTotpSecret, verifyTotpCode } from './totp.util';
 import { VerificationService } from '../email/verification.service';
 import {
@@ -33,9 +34,23 @@ const RESET_PASSWORD_TTL_MS = 30 * 60 * 1000; // 30 minutes
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
-  private readonly totpAttempts = new Map<string, { count: number; resetAt: number }>();
-  private readonly TOTP_MAX_ATTEMPTS = 5;
-  private readonly TOTP_WINDOW_MS = 15 * 60 * 1000;
+  // Brute-force protection. In-memory sliding-window limiters (single-instance);
+  // swap for Redis-backed limiters if the app is scaled horizontally.
+  private readonly totpLimiter = new RateLimiter(
+    5,
+    15 * 60 * 1000,
+    'Too many failed two-factor attempts. Please sign in again.',
+  );
+  private readonly loginLimiter = new RateLimiter(
+    5,
+    15 * 60 * 1000,
+    'Too many failed login attempts. Please try again in a few minutes.',
+  );
+  private readonly loginIpLimiter = new RateLimiter(
+    20,
+    15 * 60 * 1000,
+    'Too many failed login attempts from this address. Please try again later.',
+  );
 
   constructor(
     private prisma: PrismaService,
@@ -46,26 +61,8 @@ export class AuthService {
     private securityLogService: SecurityLogService,
   ) {}
 
-  private checkTotpAttempts(key: string): void {
-    const now = Date.now();
-    const entry = this.totpAttempts.get(key);
-    if (entry && now < entry.resetAt && entry.count >= this.TOTP_MAX_ATTEMPTS) {
-      throw new UnauthorizedException('Too many failed two-factor attempts. Please sign in again.');
-    }
-    if (entry && now >= entry.resetAt) {
-      this.totpAttempts.delete(key);
-    }
-  }
-
-  private registerTotpFailure(key: string): void {
-    const now = Date.now();
-    const entry = this.totpAttempts.get(key);
-    const nextCount = (entry && now < entry.resetAt ? entry.count : 0) + 1;
-    this.totpAttempts.set(key, { count: nextCount, resetAt: now + this.TOTP_WINDOW_MS });
-  }
-
-  private clearTotpAttempts(key: string): void {
-    this.totpAttempts.delete(key);
+  private loginKey(email: string, ip: string): string {
+    return `${email.toLowerCase().trim()}|${ip}`;
   }
 
   async signup(signupDto: SignupDto) {
@@ -134,12 +131,21 @@ export class AuthService {
 
   async login(loginDto: LoginDto, context?: { ip?: string; userAgent?: string }) {
     const { email, password } = loginDto;
+    const ip = context?.ip ?? 'unknown';
+    const accountKey = this.loginKey(email, ip);
+
+    // Throttle before any expensive work: rejected attempts never reach
+    // bcrypt and never write a security-log row.
+    this.loginLimiter.check(accountKey);
+    this.loginIpLimiter.check(ip);
 
     const user = await this.prisma.user.findUnique({
       where: { email, deletedAt: null },
     });
 
     if (!user) {
+      this.loginLimiter.registerFailure(accountKey);
+      this.loginIpLimiter.registerFailure(ip);
       await this.securityLogService.log({
         action: 'LOGIN_FAILED',
         email,
@@ -152,6 +158,8 @@ export class AuthService {
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
+      this.loginLimiter.registerFailure(accountKey);
+      this.loginIpLimiter.registerFailure(ip);
       await this.securityLogService.log({
         action: 'LOGIN_FAILED',
         userId: user.id,
@@ -192,6 +200,12 @@ export class AuthService {
         ip: context?.ip ?? null,
         userAgent: context?.userAgent ?? null,
       });
+      // Password step proven — reset only the per-account throttle. The shared
+      // per-IP counter is intentionally NOT cleared here: an MFA ticket only
+      // requires a valid password (2FA not completed), so clearing the IP
+      // counter would let an attacker reset it indefinitely. The per-IP
+      // counter resets only on a fully completed login.
+      this.loginLimiter.clear(accountKey);
       return {
         requiresTwoFactor: true,
         mfaToken,
@@ -208,6 +222,13 @@ export class AuthService {
       ip: context?.ip ?? null,
       userAgent: context?.userAgent ?? null,
     });
+    // Successful login resets the throttling counters. The per-IP clear here is
+    // a deliberate tradeoff: it protects legitimate users behind shared NATs
+    // from being blocked, at the cost of letting an attacker with one valid
+    // credential reset the shared IP counter. The per-account limiter remains
+    // the primary defense against credential stuffing on any single account.
+    this.loginLimiter.clear(accountKey);
+    this.loginIpLimiter.clear(ip);
 
     return {
       access_token: token,
@@ -344,13 +365,13 @@ export class AuthService {
     if (!user.twoFactorSecret) {
       throw new BadRequestException('No 2FA secret found. Run setup first.');
     }
-    this.checkTotpAttempts(`2fa:${user.id}`);
+    this.totpLimiter.check(`2fa:${user.id}`);
     const valid = await verifyTotpCode(user.twoFactorSecret, code);
     if (!valid) {
-      this.registerTotpFailure(`2fa:${user.id}`);
+      this.totpLimiter.registerFailure(`2fa:${user.id}`);
       throw new BadRequestException('Invalid two-factor code.');
     }
-    this.clearTotpAttempts(`2fa:${user.id}`);
+    this.totpLimiter.clear(`2fa:${user.id}`);
     await this.prisma.user.update({
       where: { id: user.id },
       data: { twoFactorEnabled: true },
@@ -374,13 +395,13 @@ export class AuthService {
     if (!user.twoFactorSecret) {
       throw new BadRequestException('Two-factor authentication is not set up.');
     }
-    this.checkTotpAttempts(`2fa:${user.id}`);
+    this.totpLimiter.check(`2fa:${user.id}`);
     const valid = await verifyTotpCode(user.twoFactorSecret, code);
     if (!valid) {
-      this.registerTotpFailure(`2fa:${user.id}`);
+      this.totpLimiter.registerFailure(`2fa:${user.id}`);
       throw new BadRequestException('Invalid two-factor code.');
     }
-    this.clearTotpAttempts(`2fa:${user.id}`);
+    this.totpLimiter.clear(`2fa:${user.id}`);
     await this.prisma.user.update({
       where: { id: user.id },
       data: { twoFactorSecret: null, twoFactorEnabled: false },
@@ -421,10 +442,10 @@ export class AuthService {
       throw new UnauthorizedException('Session invalidated. Please sign in again.');
     }
 
-    this.checkTotpAttempts(user.id);
+    this.totpLimiter.check(user.id);
     const valid = await verifyTotpCode(user.twoFactorSecret, code);
     if (!valid) {
-      this.registerTotpFailure(user.id);
+      this.totpLimiter.registerFailure(user.id);
       await this.securityLogService.log({
         action: 'TWO_FA_VERIFY_FAILED',
         userId: user.id,
@@ -434,7 +455,7 @@ export class AuthService {
       });
       throw new UnauthorizedException('Invalid two-factor code.');
     }
-    this.clearTotpAttempts(user.id);
+    this.totpLimiter.clear(user.id);
 
     const result = this.sanitizeUser(user);
     const token = this.generateToken(user);

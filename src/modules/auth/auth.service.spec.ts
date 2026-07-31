@@ -1,5 +1,5 @@
 import { AuthService } from './auth.service';
-import { BadRequestException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, HttpStatus, UnauthorizedException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 
 // bcrypt's exports are read-only under CommonJS interop, so jest.spyOn fails.
@@ -155,6 +155,106 @@ describe('AuthService login security events', () => {
     expect(result.access_token).toBe('mocked-token');
     expect(securityLog.log).toHaveBeenCalledWith(
       expect.objectContaining({ action: 'LOGIN_SUCCESS', userId: baseUser.id }),
+    );
+  });
+});
+
+describe('AuthService login rate limiting', () => {
+  let prisma: any;
+  let jwtService: any;
+  let securityLog: any;
+  let service: AuthService;
+
+  const baseUser = {
+    id: 'user-1',
+    email: 'owner@example.com',
+    password: 'hashed-password',
+    tokenVersion: 0,
+    emailVerifiedAt: new Date(),
+    twoFactorEnabled: false,
+    twoFactorSecret: null,
+  };
+
+  beforeEach(() => {
+    prisma = {
+      user: { findUnique: jest.fn() },
+    };
+    jwtService = { sign: jest.fn(() => 'mocked-token') };
+    securityLog = { log: jest.fn() };
+    service = new AuthService(prisma, jwtService, {} as any, {} as any, {} as any, securityLog);
+    mockedCompare.mockReset();
+  });
+
+  async function expectTooManyRequests(promise: Promise<unknown>): Promise<void> {
+    await expect(promise).rejects.toMatchObject({
+      status: HttpStatus.TOO_MANY_REQUESTS,
+    });
+  }
+
+  it('blocks a 6th consecutive failed login for the same email+IP', async () => {
+    prisma.user.findUnique.mockResolvedValue(baseUser);
+    mockedCompare.mockResolvedValue(false);
+
+    for (let i = 0; i < 5; i++) {
+      await expect(
+        service.login({ email: baseUser.email, password: 'wrong' }, { ip: '1.2.3.4' }),
+      ).rejects.toBeInstanceOf(UnauthorizedException);
+    }
+
+    await expectTooManyRequests(
+      service.login({ email: baseUser.email, password: 'wrong' }, { ip: '1.2.3.4' }),
+    );
+  });
+
+  it('does not write a security log row for a throttled attempt', async () => {
+    prisma.user.findUnique.mockResolvedValue(baseUser);
+    mockedCompare.mockResolvedValue(false);
+
+    for (let i = 0; i < 6; i++) {
+      try {
+        await service.login({ email: baseUser.email, password: 'wrong' }, { ip: '5.6.7.8' });
+      } catch {
+        // expected
+      }
+    }
+
+    // Only the first 5 failures get logged; the throttled attempt does not.
+    expect(securityLog.log).toHaveBeenCalledTimes(5);
+  });
+
+  it('resets the per-account counter after a successful login', async () => {
+    prisma.user.findUnique.mockResolvedValue(baseUser);
+
+    mockedCompare.mockResolvedValue(false);
+    for (let i = 0; i < 3; i++) {
+      await expect(
+        service.login({ email: baseUser.email, password: 'wrong' }, { ip: '9.9.9.9' }),
+      ).rejects.toBeInstanceOf(UnauthorizedException);
+    }
+
+    // A successful login clears the counter for that account+IP.
+    mockedCompare.mockResolvedValue(true);
+    const result = await service.login({ email: baseUser.email, password: 'right' }, { ip: '9.9.9.9' });
+    expect(result.access_token).toBe('mocked-token');
+
+    // Failing again starts from a clean slate — Unauthorized, not 429.
+    mockedCompare.mockResolvedValue(false);
+    await expect(
+      service.login({ email: baseUser.email, password: 'wrong' }, { ip: '9.9.9.9' }),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+
+  it('throttles by IP across different accounts (credential stuffing)', async () => {
+    prisma.user.findUnique.mockResolvedValue(null);
+
+    for (let i = 0; i < 20; i++) {
+      await expect(
+        service.login({ email: `user${i}@example.com`, password: 'x' }, { ip: '3.3.3.3' }),
+      ).rejects.toBeInstanceOf(UnauthorizedException);
+    }
+
+    await expectTooManyRequests(
+      service.login({ email: 'target@example.com', password: 'x' }, { ip: '3.3.3.3' }),
     );
   });
 });
