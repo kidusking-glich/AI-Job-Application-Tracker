@@ -36,4 +36,9 @@ export const adminService = {
     const { data } = await api.post('/admin/users', input);
     return data;
   },
+
+  async deleteUser(id: string): Promise<{ message: string }> {
+    const { data } = await api.delete(`/admin/users/${id}`);
+    return data;
+  },
 };

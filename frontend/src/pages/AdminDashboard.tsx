@@ -39,6 +39,7 @@ export default function AdminDashboard() {
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState<'users' | 'requests'>('requests');
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [notice, setNotice] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const currentUser = authService.getUser();
 
@@ -88,6 +89,24 @@ export default function AdminDashboard() {
       setNotice({
         type: 'error',
         text: err.response?.data?.message || 'Failed to update role.',
+      });
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const handleDeleteUser = async (user: AdminUser) => {
+    setBusyId(user.id);
+    setConfirmDeleteId(null);
+    setNotice(null);
+    try {
+      const res = await adminService.deleteUser(user.id);
+      setUsers((prev) => prev.filter((u) => u.id !== user.id));
+      setNotice({ type: 'success', text: res.message });
+    } catch (err: any) {
+      setNotice({
+        type: 'error',
+        text: err.response?.data?.message || 'Failed to delete user.',
       });
     } finally {
       setBusyId(null);
@@ -502,6 +521,26 @@ export default function AdminDashboard() {
                             className="px-2 py-1 rounded-md text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 transition-colors disabled:opacity-50"
                           >
                             {busyId === u.id ? '...' : '📧 Resend verification'}
+                          </button>
+                        )}
+                        {currentUser?.id !== u.id && !u.isSuperAdmin && (
+                          <button
+                            onClick={() =>
+                              confirmDeleteId === u.id ? handleDeleteUser(u) : setConfirmDeleteId(u.id)
+                            }
+                            onBlur={() => setConfirmDeleteId((v) => (v === u.id ? null : v))}
+                            disabled={busyId === u.id}
+                            className={`px-2 py-1 rounded-md text-xs font-semibold transition-colors disabled:opacity-50 ${
+                              confirmDeleteId === u.id
+                                ? 'bg-red-600 text-white hover:bg-red-700'
+                                : 'bg-red-50 text-red-700 hover:bg-red-100'
+                            }`}
+                          >
+                            {busyId === u.id
+                              ? '...'
+                              : confirmDeleteId === u.id
+                                ? '⚠️ Confirm delete?'
+                                : '🗑 Delete'}
                           </button>
                         )}
                       </div>

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Body, Param, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
 import { AdminService } from './admin.service';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { UpdateRoleDto } from './dto/update-role.dto';
@@ -35,6 +35,11 @@ export class AdminController {
   @Post('users')
   createAdminUser(@Body() createAdminUserDto: CreateAdminUserDto) {
     return this.adminService.createAdminUser(createAdminUserDto);
+  }
+
+  @Delete('users/:id')
+  deleteUser(@CurrentUser() requester: User, @Param('id') id: string) {
+    return this.adminService.deleteUser(requester.id, id);
   }
 
   @Patch('users/:id/role')

@@ -148,6 +148,70 @@ export class AdminService {
     return { message: `Verification email sent to ${user.email}` };
   }
 
+  /**
+   * Auto-recovery safety net: if no super admin exists (e.g. the flag was
+   * cleared or the account was deleted directly in the DB), promote the first
+   * registered non-deleted user so the dashboard can never be permanently
+   * locked out.
+   */
+  async ensureSuperAdminExists() {
+    const superAdminCount = await this.prisma.user.count({
+      where: { isSuperAdmin: true, deletedAt: null },
+    });
+    if (superAdminCount > 0) return;
+
+    const firstUser = await this.prisma.user.findFirst({
+      where: { deletedAt: null },
+      orderBy: { createdAt: 'asc' },
+    });
+    if (!firstUser) return;
+
+    await this.prisma.user.update({
+      where: { id: firstUser.id },
+      data: { isSuperAdmin: true },
+    });
+    this.logger.warn(
+      `Auto-recovered: promoted ${firstUser.email} to super admin because no super admin existed`,
+    );
+  }
+
+  async deleteUser(requesterId: string, userId: string) {
+    // The super admin must never delete their own account — that would lock
+    // everyone out of the admin dashboard permanently.
+    if (requesterId === userId) {
+      throw new BadRequestException('You cannot delete your own account.');
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId, deletedAt: null },
+    });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Never delete the super admin account.
+    if (user.isSuperAdmin) {
+      throw new BadRequestException('The super admin account cannot be deleted.');
+    }
+
+    // Never delete the last remaining admin.
+    if (user.isAdmin) {
+      const adminCount = await this.prisma.user.count({
+        where: { isAdmin: true, deletedAt: null },
+      });
+      if (adminCount <= 1) {
+        throw new BadRequestException('Cannot delete the last admin.');
+      }
+    }
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { deletedAt: new Date() },
+    });
+
+    return { message: `User ${user.email} deleted.` };
+  }
+
   async createAdminUser(createAdminUserDto: CreateAdminUserDto) {
     const { email, password, name } = createAdminUserDto;
 
