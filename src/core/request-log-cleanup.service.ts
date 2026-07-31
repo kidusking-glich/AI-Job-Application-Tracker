@@ -16,6 +16,13 @@ export class RequestLogCleanupService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(RequestLogCleanupService.name);
   private timer: NodeJS.Timeout | null = null;
 
+  /** When the most recent cleanup run finished (null before the first run). */
+  lastRunAt: Date | null = null;
+  /** Rows deleted by the most recent cleanup run. */
+  lastDeletedCount = 0;
+  /** Whether the most recent run completed without error. */
+  lastRunSucceeded: boolean | null = null;
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
@@ -46,11 +53,18 @@ export class RequestLogCleanupService implements OnModuleInit, OnModuleDestroy {
         where: { createdAt: { lt: cutoff } },
       });
 
+      this.lastRunAt = new Date();
+      this.lastDeletedCount = count;
+      this.lastRunSucceeded = true;
+
       if (count > 0) {
         this.logger.log(`Deleted ${count} request log(s) older than ${retentionDays} days`);
       }
       return count;
     } catch (err) {
+      this.lastRunAt = new Date();
+      this.lastDeletedCount = 0;
+      this.lastRunSucceeded = false;
       this.logger.error(`Request log cleanup failed: ${err.message}`);
       return 0;
     }

@@ -16,6 +16,11 @@ export class AdminController {
     return this.adminService.getStats();
   }
 
+  @Get('health')
+  getHealth() {
+    return this.adminService.getHealth();
+  }
+
   @Get('users')
   getUsers(@Query('limit') limit?: string) {
     return this.adminService.getUsers(limit ? Number(limit) : undefined);

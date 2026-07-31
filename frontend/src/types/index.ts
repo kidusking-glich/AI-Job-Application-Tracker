@@ -143,6 +143,21 @@ export interface AdminUser {
   _count: { contracts: number; analyses: number };
 }
 
+export interface SystemHealth {
+  db: {
+    status: 'up' | 'down';
+    latencyMs: number;
+    checkedAt: string;
+  };
+  cleanup: {
+    lastRunAt: string | null;
+    lastDeletedCount: number;
+    lastRunSucceeded: boolean | null;
+    retentionDays: number;
+    intervalHours: number;
+  };
+}
+
 export interface SignupResponse {
   user: User;
   message: string;

@@ -1,5 +1,5 @@
 import api from './api';
-import type { AdminStats, AdminUser, RequestLog } from '../types';
+import type { AdminStats, AdminUser, RequestLog, SystemHealth } from '../types';
 
 export const adminService = {
   async getStats(): Promise<AdminStats> {
@@ -24,6 +24,11 @@ export const adminService = {
 
   async resendVerification(id: string): Promise<{ message: string }> {
     const { data } = await api.post(`/admin/users/${id}/resend-verification`);
+    return data;
+  },
+
+  async getHealth(): Promise<SystemHealth> {
+    const { data } = await api.get<SystemHealth>('/admin/health');
     return data;
   },
 };

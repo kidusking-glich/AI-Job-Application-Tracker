@@ -1,8 +1,20 @@
 import { useEffect, useState } from 'react';
 import { adminService } from '../services/admin';
 import { authService } from '../services/auth';
-import type { AdminStats, AdminUser, RequestLog } from '../types';
+import type { AdminStats, AdminUser, RequestLog, SystemHealth } from '../types';
 import LoadingSpinner from '../components/LoadingSpinner';
+
+function timeAgo(dateStr: string | null): string {
+  if (!dateStr) return 'Never';
+  const diffMs = Date.now() - new Date(dateStr).getTime();
+  const minutes = Math.floor(diffMs / 60000);
+  if (minutes < 1) return 'Just now';
+  if (minutes < 60) return `${minutes} min ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} hr ago`;
+  const days = Math.floor(hours / 24);
+  return `${days} day${days === 1 ? '' : 's'} ago`;
+}
 
 const METHOD_COLORS: Record<string, string> = {
   GET: 'bg-emerald-100 text-emerald-800',
@@ -22,6 +34,7 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [requests, setRequests] = useState<RequestLog[]>([]);
+  const [health, setHealth] = useState<SystemHealth | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState<'users' | 'requests'>('requests');
@@ -69,14 +82,16 @@ export default function AdminDashboard() {
   useEffect(() => {
     (async () => {
       try {
-        const [statsData, usersData, requestsData] = await Promise.all([
+        const [statsData, usersData, requestsData, healthData] = await Promise.all([
           adminService.getStats(),
           adminService.getUsers(),
           adminService.getRequests(50),
+          adminService.getHealth(),
         ]);
         setStats(statsData);
         setUsers(usersData);
         setRequests(requestsData);
+        setHealth(healthData);
       } catch (err: any) {
         setError(err.response?.data?.message || 'Failed to load admin data.');
       } finally {
@@ -121,6 +136,62 @@ export default function AdminDashboard() {
           Admin Dashboard
         </h1>
         <p className="text-gray-500 mt-2">How many people are using the app and how many requests have been made.</p>
+      </div>
+
+      {/* System health card */}
+      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-8">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-semibold text-gray-900">🩺 System Health</h2>
+          <span className="text-xs text-gray-400">Checked {health ? new Date(health.db.checkedAt).toLocaleTimeString() : '—'}</span>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Database */}
+          <div className="flex items-center gap-3">
+            <span className={`w-3 h-3 rounded-full ${health?.db.status === 'up' ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'}`} />
+            <div>
+              <p className="text-sm font-medium text-gray-900">Database</p>
+              <p className="text-xs text-gray-500">
+                {health?.db.status === 'up' ? `Connected · ${health.db.latencyMs}ms` : 'Unreachable'}
+              </p>
+            </div>
+          </div>
+          {/* Last cleanup */}
+          <div className="flex items-center gap-3">
+            <span className="text-lg">🗑️</span>
+            <div>
+              <p className="text-sm font-medium text-gray-900">Last cleanup</p>
+              <p className="text-xs text-gray-500">
+                {health?.cleanup.lastRunAt ? `${timeAgo(health.cleanup.lastRunAt)} · ${health.cleanup.lastDeletedCount} deleted` : 'Not run yet'}
+              </p>
+            </div>
+          </div>
+          {/* Cleanup status */}
+          <div className="flex items-center gap-3">
+            <span className="text-lg">✅</span>
+            <div>
+              <p className="text-sm font-medium text-gray-900">Cleanup status</p>
+              <p className="text-xs text-gray-500">
+                {!health
+                  ? '—'
+                  : health.cleanup.lastRunSucceeded === null
+                    ? 'Pending first run'
+                    : health.cleanup.lastRunSucceeded
+                      ? 'Last run succeeded'
+                      : 'Last run failed'}
+              </p>
+            </div>
+          </div>
+          {/* Retention */}
+          <div className="flex items-center gap-3">
+            <span className="text-lg">⏳</span>
+            <div>
+              <p className="text-sm font-medium text-gray-900">Retention</p>
+              <p className="text-xs text-gray-500">
+                {health ? `${health.cleanup.retentionDays} days · every ${health.cleanup.intervalHours}h` : '—'}
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Stat cards */}

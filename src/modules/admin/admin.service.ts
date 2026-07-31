@@ -1,11 +1,17 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../core/prisma.service';
+import { RequestLogCleanupService } from '../../core/request-log-cleanup.service';
 import { VerificationService } from '../email/verification.service';
 
 @Injectable()
 export class AdminService {
+  private readonly logger = new Logger(AdminService.name);
+
   constructor(
     private prisma: PrismaService,
+    private cleanupService: RequestLogCleanupService,
+    private configService: ConfigService,
     private verificationService: VerificationService,
   ) {}
 
@@ -137,5 +143,37 @@ export class AdminService {
     await this.verificationService.issueAndSendVerification(user);
 
     return { message: `Verification email sent to ${user.email}` };
+  }
+
+  async getHealth() {
+    // Ping the database and measure round-trip latency
+    const dbStartedAt = Date.now();
+    let dbStatus: 'up' | 'down';
+    try {
+      await this.prisma.$queryRaw`SELECT 1`;
+      dbStatus = 'up';
+    } catch (err) {
+      this.logger.error(`DB health check failed: ${err.message}`);
+      dbStatus = 'down';
+    }
+    const dbLatencyMs = Date.now() - dbStartedAt;
+
+    const retentionDays = this.configService.get<number>('REQUEST_LOG_RETENTION_DAYS', 30);
+    const intervalHours = this.configService.get<number>('REQUEST_LOG_CLEANUP_INTERVAL_HOURS', 24);
+
+    return {
+      db: {
+        status: dbStatus,
+        latencyMs: dbLatencyMs,
+        checkedAt: new Date().toISOString(),
+      },
+      cleanup: {
+        lastRunAt: this.cleanupService.lastRunAt,
+        lastDeletedCount: this.cleanupService.lastDeletedCount,
+        lastRunSucceeded: this.cleanupService.lastRunSucceeded,
+        retentionDays,
+        intervalHours,
+      },
+    };
   }
 }

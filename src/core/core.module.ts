@@ -5,6 +5,6 @@ import { RequestLogCleanupService } from './request-log-cleanup.service';
 @Global()
 @Module({
   providers: [PrismaService, RequestLogCleanupService],
-  exports: [PrismaService],
+  exports: [PrismaService, RequestLogCleanupService],
 })
 export class CoreModule {}
