@@ -3,7 +3,6 @@ import {
   ConflictException,
   UnauthorizedException,
   BadRequestException,
-  NotFoundException,
   Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../../core/prisma.service';
@@ -164,18 +163,22 @@ export class AuthService {
       where: { email, deletedAt: null },
     });
 
-    if (!user) {
-      // Don't reveal whether the email exists for unverified users
-      throw new NotFoundException('No account found for that email.');
+    // Anti-enumeration: always respond with the same generic message so the
+    // endpoint cannot be used to discover which emails are registered.
+    // The email is only actually sent when the account exists and is unverified.
+    // Send failures are logged but never surfaced, so the response stays uniform.
+    if (user && !user.emailVerifiedAt) {
+      try {
+        await this.verificationService.issueAndSendVerification(user);
+      } catch (err) {
+        this.logger.error(`Failed to send verification email to ${user.email}: ${err.message}`);
+      }
     }
 
-    if (user.emailVerifiedAt) {
-      return { message: 'Your email is already verified. You can sign in now.' };
-    }
-
-    await this.verificationService.issueAndSendVerification(user);
-
-    return { message: 'A new verification email has been sent. Please check your inbox.' };
+    return {
+      message:
+        'If that email is registered and not yet verified, a new verification email has been sent to your inbox.',
+    };
   }
 
   private sanitizeUser(user: User) {
