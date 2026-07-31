@@ -42,6 +42,37 @@ export default function AdminDashboard() {
   const [notice, setNotice] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const currentUser = authService.getUser();
 
+  // Create-admin form state
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [newEmail, setNewEmail] = useState('');
+  const [newName, setNewName] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState('');
+
+  const handleCreateAdmin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCreateError('');
+    setCreating(true);
+    try {
+      const res = await adminService.createUser({
+        email: newEmail,
+        name: newName || undefined,
+        password: newPassword,
+      });
+      setUsers((prev) => [res.user, ...prev]);
+      setNotice({ type: 'success', text: res.message });
+      setShowCreateForm(false);
+      setNewEmail('');
+      setNewName('');
+      setNewPassword('');
+    } catch (err: any) {
+      setCreateError(err.response?.data?.message || 'Failed to create admin user.');
+    } finally {
+      setCreating(false);
+    }
+  };
+
   const handleToggleRole = async (user: AdminUser) => {
     const target = !user.isAdmin;
     setBusyId(user.id);
@@ -251,6 +282,86 @@ export default function AdminDashboard() {
         </div>
       </div>
 
+      {/* Create admin user */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 mb-8 overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-4">
+          <h2 className="font-semibold text-gray-900">👑 Create Admin User</h2>
+          <button
+            onClick={() => setShowCreateForm((v) => !v)}
+            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+              showCreateForm
+                ? 'bg-gray-100 text-gray-600'
+                : 'bg-gray-900 text-white hover:bg-gray-800'
+            }`}
+          >
+            {showCreateForm ? 'Cancel' : '+ New admin'}
+          </button>
+        </div>
+        {showCreateForm && (
+          <form onSubmit={handleCreateAdmin} className="px-6 pb-6 space-y-4 animate-fade-in">
+            {createError && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
+                {createError}
+              </div>
+            )}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Name (optional)</label>
+                <input
+                  type="text"
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  className="input-field"
+                  placeholder="Their name"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Email</label>
+                <input
+                  type="email"
+                  value={newEmail}
+                  onChange={(e) => setNewEmail(e.target.value)}
+                  className="input-field"
+                  placeholder="admin@example.com"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Password</label>
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="input-field"
+                  placeholder="At least 6 characters"
+                  required
+                  minLength={6}
+                />
+              </div>
+            </div>
+            <div className="flex items-center justify-between gap-4">
+              <p className="text-xs text-gray-400">
+                The account is created as an admin and marked verified — they can sign in immediately but cannot access this dashboard (super-admin only).
+              </p>
+              <button
+                type="submit"
+                disabled={creating}
+                className="btn-primary flex items-center gap-2 whitespace-nowrap"
+              >
+                {creating ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Creating...
+                  </>
+                ) : (
+                  '👑 Create admin'
+                )}
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
+
       {/* Tabs */}
       <div className="flex gap-2 mb-4">
         {(['requests', 'users'] as const).map((tab) => (
@@ -349,7 +460,9 @@ export default function AdminDashboard() {
                       <div className="text-xs text-gray-500">{u.email}</div>
                     </td>
                     <td className="px-4 py-2.5">
-                      {u.isAdmin ? (
+                      {u.isSuperAdmin ? (
+                        <span className="px-2 py-0.5 rounded-md text-xs font-bold bg-gray-900 text-white">👑 Super Admin</span>
+                      ) : u.isAdmin ? (
                         <span className="px-2 py-0.5 rounded-md text-xs font-bold bg-purple-100 text-purple-800">🛡️ Admin</span>
                       ) : (
                         <span className="px-2 py-0.5 rounded-md text-xs bg-gray-100 text-gray-600">User</span>

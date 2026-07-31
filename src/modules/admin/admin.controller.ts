@@ -2,6 +2,7 @@ import { Controller, Get, Post, Patch, Body, Param, Query, UseGuards } from '@ne
 import { AdminService } from './admin.service';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { UpdateRoleDto } from './dto/update-role.dto';
+import { CreateAdminUserDto } from './dto/create-admin-user.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { User } from '@prisma/client';
 import { AdminGuard } from './admin.guard';
@@ -29,6 +30,11 @@ export class AdminController {
   @Get('requests')
   getRequests(@Query('limit') limit?: string) {
     return this.adminService.getRequests(limit ? Number(limit) : undefined);
+  }
+
+  @Post('users')
+  createAdminUser(@Body() createAdminUserDto: CreateAdminUserDto) {
+    return this.adminService.createAdminUser(createAdminUserDto);
   }
 
   @Patch('users/:id/role')

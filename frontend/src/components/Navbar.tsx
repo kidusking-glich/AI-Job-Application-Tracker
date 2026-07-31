@@ -34,7 +34,7 @@ export default function Navbar() {
           {/* Navigation Links */}
           {isAuth && (
             <div className="flex items-center gap-1">
-              {user?.isAdmin && (
+              {user?.isSuperAdmin && (
                 <Link
                   to="/admin"
                   className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${

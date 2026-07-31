@@ -5,7 +5,9 @@ export class AdminGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
     const request = context.switchToHttp().getRequest();
     const user = request.user;
-    if (!user?.isAdmin) {
+    // Only the super admin (the first registered account) may access the admin
+    // dashboard. Other admins can be created but cannot sign in to it.
+    if (!user?.isSuperAdmin) {
       throw new ForbiddenException('Admin access required');
     }
     return true;

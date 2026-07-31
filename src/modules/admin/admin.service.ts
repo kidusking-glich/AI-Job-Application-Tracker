@@ -1,8 +1,10 @@
-import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ConflictException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../core/prisma.service';
 import { RequestLogCleanupService } from '../../core/request-log-cleanup.service';
 import { VerificationService } from '../email/verification.service';
+import { CreateAdminUserDto } from './dto/create-admin-user.dto';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class AdminService {
@@ -84,6 +86,7 @@ export class AdminService {
         email: true,
         name: true,
         isAdmin: true,
+        isSuperAdmin: true,
         emailVerifiedAt: true,
         createdAt: true,
         _count: { select: { contracts: true, analyses: true } },
@@ -143,6 +146,41 @@ export class AdminService {
     await this.verificationService.issueAndSendVerification(user);
 
     return { message: `Verification email sent to ${user.email}` };
+  }
+
+  async createAdminUser(createAdminUserDto: CreateAdminUserDto) {
+    const { email, password, name } = createAdminUserDto;
+
+    const existing = await this.prisma.user.findUnique({ where: { email } });
+    if (existing) {
+      throw new ConflictException('Email already in use');
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const user = await this.prisma.user.create({
+      data: {
+        email,
+        name,
+        password: hashedPassword,
+        isAdmin: true,
+        emailVerifiedAt: new Date(), // created by the super admin, no email verification needed
+      },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        isAdmin: true,
+        isSuperAdmin: false,
+        emailVerifiedAt: true,
+        createdAt: true,
+        _count: { select: { contracts: true, analyses: true } },
+      },
+    });
+
+    return {
+      message: `Admin user ${user.email} created.`,
+      user,
+    };
   }
 
   async getHealth() {

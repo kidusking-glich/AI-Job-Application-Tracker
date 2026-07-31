@@ -11,7 +11,7 @@ export default function AdminRoute({ children }: Props) {
   if (!authService.isAuthenticated()) {
     return <Navigate to="/login" replace />;
   }
-  if (!user?.isAdmin) {
+  if (!user?.isSuperAdmin) {
     return <Navigate to="/" replace />;
   }
   return <>{children}</>;

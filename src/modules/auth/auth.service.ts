@@ -51,6 +51,7 @@ export class AuthService {
         password: hashedPassword,
         name,
         isAdmin: isFirstUser,
+        isSuperAdmin: isFirstUser,
         verificationToken: hashToken(verificationToken),
         verificationTokenExpiresAt: new Date(Date.now() + VERIFICATION_TTL_MS),
       },

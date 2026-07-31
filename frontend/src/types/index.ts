@@ -3,6 +3,7 @@ export interface User {
   email: string;
   name?: string;
   isAdmin?: boolean;
+  isSuperAdmin?: boolean;
   emailVerifiedAt?: string | null;
   createdAt: string;
 }
@@ -138,9 +139,16 @@ export interface AdminUser {
   email: string;
   name?: string;
   isAdmin: boolean;
+  isSuperAdmin: boolean;
   emailVerifiedAt?: string | null;
   createdAt: string;
   _count: { contracts: number; analyses: number };
+}
+
+export interface CreateAdminUserInput {
+  email: string;
+  password: string;
+  name?: string;
 }
 
 export interface SystemHealth {
