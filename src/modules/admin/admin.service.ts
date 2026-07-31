@@ -181,7 +181,13 @@ export class AdminService {
       }),
       this.prisma.user.update({
         where: { id: requesterId },
-        data: { isSuperAdmin: false, isAdmin: true },
+        data: {
+          isSuperAdmin: false,
+          isAdmin: true,
+          // Fully revoke the former holder's session: all previously issued
+          // JWTs carry the old tokenVersion and are now rejected.
+          tokenVersion: { increment: 1 },
+        },
       }),
     ]);
 
