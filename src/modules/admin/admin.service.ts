@@ -289,6 +289,37 @@ export class AdminService {
     };
   }
 
+  /**
+   * Who currently holds the super admin role plus the auto-recovery rules, so
+   * the dashboard can show a dedicated settings card.
+   */
+  async getSuperAdminStatus() {
+    const superAdmin = await this.prisma.user.findFirst({
+      where: { isSuperAdmin: true, deletedAt: null },
+      orderBy: { createdAt: 'asc' },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        isAdmin: true,
+        isSuperAdmin: true,
+        emailVerifiedAt: true,
+        createdAt: true,
+      },
+    });
+
+    return {
+      superAdmin,
+      autoRecovery: {
+        enabled: true,
+        description:
+          'If no super admin exists, the first registered non-deleted user is automatically promoted so the dashboard can never be locked out.',
+      },
+      transferNote:
+        'Only email-verified users can be made the super admin, and exactly one super admin always exists (transfers are atomic).',
+    };
+  }
+
   async getHealth() {
     // Ping the database and measure round-trip latency
     const dbStartedAt = Date.now();

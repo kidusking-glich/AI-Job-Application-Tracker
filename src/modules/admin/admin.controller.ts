@@ -22,6 +22,11 @@ export class AdminController {
     return this.adminService.getHealth();
   }
 
+  @Get('super-admin-status')
+  getSuperAdminStatus() {
+    return this.adminService.getSuperAdminStatus();
+  }
+
   @Get('users')
   getUsers(@Query('limit') limit?: string) {
     return this.adminService.getUsers(limit ? Number(limit) : undefined);

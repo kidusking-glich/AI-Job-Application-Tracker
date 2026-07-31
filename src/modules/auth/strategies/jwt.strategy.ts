@@ -8,6 +8,7 @@ import { UsersService } from '../../users/users.service';
 interface JwtPayload {
   sub: string;
   email: string;
+  version?: number;
 }
 
 @Injectable()
@@ -26,6 +27,11 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   async validate(payload: JwtPayload) {
     const user = await this.usersService.findOneById(payload.sub);
     if (!user) {
+      throw new UnauthorizedException();
+    }
+    // Token versioning: reject any token that was issued before the user's
+    // tokenVersion was bumped (e.g. after a password reset).
+    if (payload.version !== user.tokenVersion) {
       throw new UnauthorizedException();
     }
     return user;

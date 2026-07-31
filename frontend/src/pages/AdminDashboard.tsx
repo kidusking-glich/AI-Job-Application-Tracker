@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { adminService } from '../services/admin';
 import { authService } from '../services/auth';
-import type { AdminStats, AdminUser, RequestLog, SystemHealth } from '../types';
+import type { AdminStats, AdminUser, RequestLog, SuperAdminStatus, SystemHealth } from '../types';
 import LoadingSpinner from '../components/LoadingSpinner';
 
 function timeAgo(dateStr: string | null): string {
@@ -35,6 +35,7 @@ export default function AdminDashboard() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [requests, setRequests] = useState<RequestLog[]>([]);
   const [health, setHealth] = useState<SystemHealth | null>(null);
+  const [superAdminStatus, setSuperAdminStatus] = useState<SuperAdminStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState<'users' | 'requests'>('requests');
@@ -160,16 +161,18 @@ export default function AdminDashboard() {
   useEffect(() => {
     (async () => {
       try {
-        const [statsData, usersData, requestsData, healthData] = await Promise.all([
+        const [statsData, usersData, requestsData, healthData, superAdminData] = await Promise.all([
           adminService.getStats(),
           adminService.getUsers(),
           adminService.getRequests(50),
           adminService.getHealth(),
+          adminService.getSuperAdminStatus(),
         ]);
         setStats(statsData);
         setUsers(usersData);
         setRequests(requestsData);
         setHealth(healthData);
+        setSuperAdminStatus(superAdminData);
       } catch (err: any) {
         setError(err.response?.data?.message || 'Failed to load admin data.');
       } finally {
@@ -268,6 +271,48 @@ export default function AdminDashboard() {
                 {health ? `${health.cleanup.retentionDays} days · every ${health.cleanup.intervalHours}h` : '—'}
               </p>
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Super admin settings card */}
+      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-8">
+        <div className="flex items-center gap-2 mb-4">
+          <h2 className="font-semibold text-gray-900">👑 Super Admin</h2>
+          <span className="px-2 py-0.5 rounded-md text-xs font-bold bg-gray-900 text-white">Settings</span>
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {/* Current holder */}
+          <div className="p-4 rounded-xl bg-gray-50 border border-gray-100">
+            <p className="text-xs text-gray-500 uppercase font-semibold mb-2">Current holder</p>
+            {superAdminStatus?.superAdmin ? (
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white font-bold shrink-0">
+                  {(superAdminStatus.superAdmin.name || superAdminStatus.superAdmin.email)[0].toUpperCase()}
+                </div>
+                <div className="min-w-0">
+                  <p className="font-medium text-gray-900 truncate">{superAdminStatus.superAdmin.name || superAdminStatus.superAdmin.email}</p>
+                  <p className="text-xs text-gray-500 truncate">{superAdminStatus.superAdmin.email}</p>
+                  <p className="text-xs text-gray-400">Since {new Date(superAdminStatus.superAdmin.createdAt).toLocaleDateString()}</p>
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-yellow-700">⚠️ No super admin found — auto-recovery will promote the first user.</p>
+            )}
+          </div>
+          {/* Auto recovery */}
+          <div className="p-4 rounded-xl bg-gray-50 border border-gray-100">
+            <p className="text-xs text-gray-500 uppercase font-semibold mb-2">Auto-recovery</p>
+            <p className="text-sm text-gray-700">
+              {superAdminStatus?.autoRecovery.enabled ? '🟢 Enabled' : '🔴 Disabled'}
+            </p>
+            <p className="text-xs text-gray-500 mt-1">{superAdminStatus?.autoRecovery.description}</p>
+          </div>
+          {/* Transfer note */}
+          <div className="p-4 rounded-xl bg-gray-50 border border-gray-100">
+            <p className="text-xs text-gray-500 uppercase font-semibold mb-2">Transferring the role</p>
+            <p className="text-xs text-gray-600">{superAdminStatus?.transferNote}</p>
+            <p className="text-xs text-gray-400 mt-2">Use the 👑 Transfer button in the Users tab.</p>
           </div>
         </div>
       </div>

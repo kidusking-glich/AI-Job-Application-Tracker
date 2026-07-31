@@ -254,6 +254,8 @@ export class AuthService {
         password: hashedPassword,
         resetPasswordToken: null,
         resetPasswordTokenExpiresAt: null,
+        // Bump the token version so all previously issued JWTs are invalidated.
+        tokenVersion: { increment: 1 },
       },
     });
 
@@ -266,7 +268,7 @@ export class AuthService {
   }
 
   private generateToken(user: User): string {
-    const payload = { sub: user.id, email: user.email };
+    const payload = { sub: user.id, email: user.email, version: user.tokenVersion };
     return this.jwtService.sign(payload);
   }
 }

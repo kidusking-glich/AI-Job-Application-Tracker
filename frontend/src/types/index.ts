@@ -151,6 +151,23 @@ export interface CreateAdminUserInput {
   name?: string;
 }
 
+export interface SuperAdminStatus {
+  superAdmin: {
+    id: string;
+    email: string;
+    name?: string;
+    isAdmin: boolean;
+    isSuperAdmin: boolean;
+    emailVerifiedAt?: string | null;
+    createdAt: string;
+  } | null;
+  autoRecovery: {
+    enabled: boolean;
+    description: string;
+  };
+  transferNote: string;
+}
+
 export interface SystemHealth {
   db: {
     status: 'up' | 'down';

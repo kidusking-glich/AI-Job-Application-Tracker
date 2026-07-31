@@ -1,5 +1,5 @@
 import api from './api';
-import type { AdminStats, AdminUser, CreateAdminUserInput, RequestLog, SystemHealth } from '../types';
+import type { AdminStats, AdminUser, CreateAdminUserInput, RequestLog, SuperAdminStatus, SystemHealth } from '../types';
 
 export const adminService = {
   async getStats(): Promise<AdminStats> {
@@ -29,6 +29,11 @@ export const adminService = {
 
   async getHealth(): Promise<SystemHealth> {
     const { data } = await api.get<SystemHealth>('/admin/health');
+    return data;
+  },
+
+  async getSuperAdminStatus(): Promise<SuperAdminStatus> {
+    const { data } = await api.get<SuperAdminStatus>('/admin/super-admin-status');
     return data;
   },
 
