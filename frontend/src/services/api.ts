@@ -29,4 +29,22 @@ api.interceptors.response.use(
   },
 );
 
+/**
+ * Extract a human-readable message from an API/axios error.
+ * Backend responses can carry `{ message: string | string[] }` or a plain string.
+ */
+export function getErrorMessage(error: unknown, fallback = 'Something went wrong. Please try again.'): string {
+  if (!error) return fallback;
+
+  const err = error as any;
+  const data = err.response?.data;
+  const message = data?.message;
+
+  if (Array.isArray(message)) return message.join(', ');
+  if (typeof message === 'string' && message.trim()) return message;
+  if (typeof data === 'string' && data.trim()) return data;
+  if (typeof err.message === 'string' && err.message.trim()) return err.message;
+  return fallback;
+}
+
 export default api;

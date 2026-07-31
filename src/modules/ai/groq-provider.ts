@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { AiProvider, ClauseAnalysisInput, ContractAnalysisResult, AnalyzedClause } from './ai-types';
+import { AiProvider, ClauseAnalysisInput, ContractAnalysisResult, AnalyzedClause, AiError, AiErrorCode } from './ai-types';
 
 @Injectable()
 export class GroqAiProvider extends AiProvider {
@@ -40,7 +40,7 @@ export class GroqAiProvider extends AiProvider {
     // --- System prompt with Ethiopian legal context ---
     const systemPrompt = [
       'You are an expert Ethiopian contract analyst with deep knowledge of Ethiopian law.',
-      'You analyze contracts in both English and Amharic (\u12A0\u121B\u122D\u129B).',
+      'You analyze contracts in both English and Amharic (አማርኛ).',
       '',
       '=== ETHIOPIAN LEGAL FRAMEWORK ===',
       'You must analyze contracts against these key Ethiopian laws:',
@@ -69,18 +69,18 @@ export class GroqAiProvider extends AiProvider {
       '',
       '=== AMHARIC LEGAL TERMINOLOGY ===',
       'When analyzing Amharic contracts, recognize these key terms:',
-      '- \u12C3\u120D (W\u00E9l) = Contract | \u1235\u121D\u135D\u1295\u1275 (Simimnet) = Agreement',
-      '- \u130D\u1300\u1273 (Gid\u00E9ta) = Obligation | \u134D\u1243\u12F5 (Fikad) = Consent',
-      '- \u1309\u1300\u1275 (Gudat) = Damage/Loss | \u12AA\u1233\u122B (Kisara) = Compensation',
-      '- \u12CB\u1235\u1272\u1293 (Wastina) = Guarantee/Warranty',
-      '- \u12A0\u1235\u130D\u12F3\u130C \u1201\u1294\u1273 (Asgedaj Huneta) = Force Majeure',
-      '- \u12AD\u134D\u120D (Kifil) = Clause/Section',
-      '- \u12F0\u1218\u12C8\u129D (Demewoz) = Salary/Wages',
-      '- \u1240\u1228\u134D\u1275 (Erefet) = Leave',
-      '- \u1270\u1240\u1323\u122A (Teketari) = Employee',
-      '- \u12A0\u1230\u122A (Aseri) = Employer',
-      '- \u121B\u1235\u1273\u12CB\u1240\u1175\u12EB (Mastawekia) = Notice',
-      '- \u12C3\u120D \u121B\u1240\u1275\u1228\u1295\u1275 (Wel Maqweret) = Termination',
+      '- ውል (Wél) = Contract | ስምምነት (Simimnet) = Agreement',
+      '- ግዴታ (Gidéta) = Obligation | ፍቃድ (Fikad) = Consent',
+      '- ጉዳት (Gudat) = Damage/Loss | ኪሳራ (Kisara) = Compensation',
+      '- ዋስትና (Wastina) = Guarantee/Warranty',
+      '- አስገዳጃ ሁኔታ (Asgedaj Huneta) = Force Majeure',
+      '- ክፍል (Kifil) = Clause/Section',
+      '- ደመወዝ (Demewoz) = Salary/Wages',
+      '- ዕረፍት (Erefet) = Leave',
+      '- ተቀጣሪ (Teketari) = Employee',
+      '- አሰሪ (Aseri) = Employer',
+      '- ማስታወቂያ (Mastawekia) = Notice',
+      '- ውል ማቋረጥ (Wel Maqweret) = Termination',
       '',
       '=== ANALYSIS INSTRUCTIONS ===',
       'For each clause determine:',
@@ -98,14 +98,27 @@ export class GroqAiProvider extends AiProvider {
       '- keyFindings: 1-3 most important findings',
       '- recommendations: 1-3 actionable next steps',
       '',
+      '=== BILINGUAL OUTPUT (ENGLISH + AMHARIC) ===',
+      'Provide every analysis text field in BOTH English and Amharic so that',
+      'Amharic-speaking readers can fully understand the analysis.',
+      '- English fields: summary, keyFindings, recommendations, explanation, suggestion',
+      '- Amharic fields: summaryAmharic, keyFindingsAmharic, recommendationsAmharic,',
+      '  explanationAmharic, suggestionAmharic',
+      '- Write Amharic fields in natural, clear Amharic (አማርኛ) using the legal',
+      '  terminology above where relevant.',
+      '- Even when the contract is in English, fully translate the analysis into Amharic.',
+      '',
       'CRITICAL: Respond with valid JSON only. No markdown, no code fences.',
       'Use this exact JSON structure:',
       JSON.stringify({
         overallScore: 0,
         riskLevel: 'LOW',
-        summary: 'string',
-        keyFindings: ['string'],
-        recommendations: ['string'],
+        summary: 'string (English)',
+        summaryAmharic: 'string (አማርኛ)',
+        keyFindings: ['string (English)'],
+        keyFindingsAmharic: ['string (አማርኛ)'],
+        recommendations: ['string (English)'],
+        recommendationsAmharic: ['string (አማርኛ)'],
         clauses: [
           {
             clauseNumber: 0,
@@ -113,8 +126,10 @@ export class GroqAiProvider extends AiProvider {
             content: 'string',
             sentiment: 'FAVORABLE',
             riskLevel: 'LOW',
-            explanation: 'string',
-            suggestion: 'string',
+            explanation: 'string (English)',
+            explanationAmharic: 'string (አማርኛ)',
+            suggestion: 'string (English)',
+            suggestionAmharic: 'string (አማርኛ)',
             severity: 0,
           },
         ],
@@ -132,8 +147,8 @@ export class GroqAiProvider extends AiProvider {
       .join('\n\n');
 
     const langNote = isAmharic
-      ? 'This contract is in Amharic (አማርኛ). Analyze it using Ethiopian legal standards and the Amharic legal terminology.'
-      : 'This contract is in English. Analyze it using Ethiopian legal standards.';
+      ? 'This contract is in Amharic (አማርኛ). Analyze it using Ethiopian legal standards and the Amharic legal terminology. Provide the analysis in both English and Amharic.'
+      : 'This contract is in English. Analyze it using Ethiopian legal standards. Provide the analysis in both English and Amharic so Amharic-speaking readers can understand it.';
 
     const userPrompt = [
       `Contract Title: ${title}`,
@@ -161,12 +176,45 @@ export class GroqAiProvider extends AiProvider {
       const responseText = completion.choices[0]?.message?.content || '{}';
       const result = JSON.parse(responseText) as ContractAnalysisResult;
       return this.normalizeResult(result, clauses);
-    } catch (error) {
-      this.logger.error(`Groq API call failed: ${error.message}`);
-      throw new Error(
-        `AI analysis failed: ${error.message}. Please check your GROQ_API_KEY and try again.`,
+    } catch (error: any) {
+      this.logger.error(`Groq API call failed: ${error?.message}`);
+      throw this.classifyError(error);
+    }
+  }
+
+  /** Map Groq SDK errors to user-friendly, standard error states. */
+  private classifyError(error: any): AiError {
+    const status = error?.status as number | undefined;
+    const detail = error?.error?.message || error?.message || '';
+
+    if (status === 429) {
+      if (/quota|limit.*reached|exceed/i.test(detail)) {
+        return new AiError(
+          AiErrorCode.QUOTA_EXCEEDED,
+          'The AI analysis quota has been reached for now. Please try again in a few minutes.',
+        );
+      }
+      return new AiError(
+        AiErrorCode.RATE_LIMIT,
+        'Too many AI requests. Please wait a moment and try again.',
       );
     }
+    if (status === 401 || status === 403) {
+      return new AiError(
+        AiErrorCode.INVALID_API_KEY,
+        'The AI service is not configured correctly. Please contact support.',
+      );
+    }
+    if (status && status >= 500) {
+      return new AiError(
+        AiErrorCode.SERVICE_UNAVAILABLE,
+        'The AI service is temporarily unavailable. Please try again shortly.',
+      );
+    }
+    return new AiError(
+      AiErrorCode.GENERIC,
+      'AI analysis failed. Please try again in a moment.',
+    );
   }
 
   private normalizeResult(
@@ -193,6 +241,10 @@ export class GroqAiProvider extends AiProvider {
             aiClause.explanation || 'No specific analysis provided for this clause.',
           suggestion:
             aiClause.suggestion || 'Review this clause carefully in the context of your agreement.',
+          explanationAmharic:
+            aiClause.explanationAmharic || aiClause.explanation || '',
+          suggestionAmharic:
+            aiClause.suggestionAmharic || aiClause.suggestion || '',
           severity: Math.min(10, Math.max(1, aiClause.severity || 3)),
         };
       },
@@ -202,8 +254,19 @@ export class GroqAiProvider extends AiProvider {
       overallScore: Math.min(100, Math.max(0, result.overallScore || 50)),
       riskLevel: this.normalizeRiskLevel(result.riskLevel),
       summary: result.summary || 'Analysis completed. Review the clause-by-clause breakdown below.',
+      summaryAmharic: result.summaryAmharic || result.summary || '',
       keyFindings: Array.isArray(result.keyFindings) ? result.keyFindings : [],
+      keyFindingsAmharic: Array.isArray(result.keyFindingsAmharic)
+        ? result.keyFindingsAmharic
+        : Array.isArray(result.keyFindings)
+          ? result.keyFindings
+          : [],
       recommendations: Array.isArray(result.recommendations) ? result.recommendations : [],
+      recommendationsAmharic: Array.isArray(result.recommendationsAmharic)
+        ? result.recommendationsAmharic
+        : Array.isArray(result.recommendations)
+          ? result.recommendations
+          : [],
       clauses: normalizedClauses,
     };
   }

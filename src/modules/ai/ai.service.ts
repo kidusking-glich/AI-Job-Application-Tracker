@@ -59,6 +59,10 @@ export class MockAiProvider extends AiProvider {
             'This clause contains language that shifts significant risk or liability onto you. It uses terms that strongly favor the other party and could lead to unfavorable outcomes.',
           suggestion:
             'Consider negotiating to remove or modify the unfavorable terms. Seek to add mutuality and balance to the obligations.',
+          explanationAmharic:
+            'ይህ አንቀጽ በእርስዎ ላይ ከፍተኛ ስጋት ወይም ኃላፊነት የሚጭን ቋንቋ ይዟል። የሌላውን ወገን በጥብቅ የሚደግፍ እና ወደ ማይመቹ ውጤቶች ሊያመራ ይችላል።',
+          suggestionAmharic:
+            'የማይመቹትን ውሎች ለማስወገድ ወይም ለማስተካከል መደራደር ያስቡ። በኃላፊነቶቹ ላይ ሚዛናዊነት እና የጋራነት እንዲኖር ይጠይቁ።',
           severity: 8,
         };
       }
@@ -74,6 +78,10 @@ export class MockAiProvider extends AiProvider {
             'This clause contains balanced and fair language. It protects your interests with reasonable terms and mutual obligations.',
           suggestion:
             'This clause appears well-balanced. Maintain it as-is during negotiations.',
+          explanationAmharic:
+            'ይህ አንቀጽ ሚዛናዊ እና ፍትሃዊ ቋንቋ ይዟል። በተመጣጣኝ ውሎች እና የጋራ ኃላፊነት ፍላጎትዎን ይጠብቃል።',
+          suggestionAmharic:
+            'ይህ አንቀጽ ሚዛናዊ ነው። በድርድር ጊዜ እንዳለ እንዲቆይ ያድርጉ።',
           severity: 2,
         };
       }
@@ -88,6 +96,10 @@ export class MockAiProvider extends AiProvider {
           'This clause appears to be standard language with no immediately apparent risks or exceptional benefits.',
         suggestion:
           'Review carefully in the context of your specific situation. Standard clauses can still have important implications.',
+        explanationAmharic:
+          'ይህ አንቀጽ መደበኛ ቋንቋ ይመስላል፤ ወዲያውኑ የሚታወቅ ስጋትም ሆነ ልዩ ጥቅም የለውም።',
+        suggestionAmharic:
+          'በተለየ ሁኔታዎ ውስጥ በጥንቃቄ ይገምግሙት። መደበኛ አንቀጾች እንኳ ጠቃሚ አንድምታ ሊኖራቸው ይችላል።',
         severity: 3,
       };
     });
@@ -145,8 +157,28 @@ export class MockAiProvider extends AiProvider {
         badClauses.length > 0
           ? `This contract contains ${badClauses.length} clause(s) that require attention. Overall, it scores ${score}/100. We recommend reviewing the highlighted clauses carefully and consulting with a legal professional before signing.`
           : `This contract appears to be reasonably balanced. It scores ${score}/100. While no major red flags were detected, we still recommend careful review.`,
+      summaryAmharic:
+        badClauses.length > 0
+          ? `ይህ ውል ${badClauses.length} ትኩረት የሚሹ አንቀጾችን ይዟል። በአጠቃላይ ከ100 ${score} ያስመዘገበ ሲሆን፣ የተጠቆሙትን አንቀጾች በጥንቃቄ እንዲገመግሙ እና ከመፈረምዎ በፊት የህግ ባለሙያ እንዲያማክሩ እንመክራለን።`
+          : `ይህ ውል በተመጣጣኝ ሁኔታ ሚዛናዊ ይመስላል። ከ100 ${score} ያስመዘገበ ሲሆን፣ ምንም ከባድ ችግር ባይታወቅም ጥንቃቄ የተሞላበት ግምገማ እንመክራለን።`,
       keyFindings,
+      keyFindingsAmharic: [
+        `ውሉ ${badClauses.length} የማይመቹ ሊሆኑ የሚችሉ አንቀጾችን ይዟል`,
+        `ውሉ ${goodClauses.length} ጥሩ አንቀጾችን ይዟል`,
+        ...(badClauses.length > 0
+          ? [`ዋና ስጋት: "${badClauses[0].title}" - ይህ አንቀጽ ከፍተኛ ትኩረት ይፈልጋል`]
+          : []),
+      ],
       recommendations,
+      recommendationsAmharic: [
+        ...(badClauses.length > 0
+          ? [
+              `በተገኙት ${badClauses.length} የማይመቹ አንቀጾች ላይ መደራደር ወይም የህግ ምክር ይጠይቁ`,
+            ]
+          : []),
+        'ሙሉውን ውል ጠበቃ እንዲገመግሙት ያድርጉ',
+        'የመጨረሻውን የተፈረመ ውል ቅጂ ለመዛግብት ያስቀምጡ',
+      ],
       clauses: analyzedClauses,
     };
   }

@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { contractsService } from '../services/contracts';
 import { analysisService } from '../services/analysis';
+import { getErrorMessage } from '../services/api';
 
 export default function NewContract() {
   const navigate = useNavigate();
@@ -49,7 +50,7 @@ export default function NewContract() {
       // Navigate to dashboard - analysis is processing
       navigate('/');
     } catch (err: any) {
-      setError(err.response?.data?.message || err.message || 'Failed to create contract');
+      setError(getErrorMessage(err, 'Failed to create contract'));
     } finally {
       setLoading(false);
     }

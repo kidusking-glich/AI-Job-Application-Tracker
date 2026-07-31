@@ -1,13 +1,26 @@
 import { useState } from 'react';
-import type { ClauseAnalysis } from '../types';
-import { SENTIMENT_LABELS } from '../types';
+import type { ClauseAnalysis, AnalysisLanguage } from '../types';
+import { SENTIMENT_LABELS, SENTIMENT_LABELS_AMHARIC } from '../types';
 
 interface Props {
   clause: ClauseAnalysis;
+  language?: AnalysisLanguage;
 }
 
-export default function ClauseCard({ clause }: Props) {
+export default function ClauseCard({ clause, language = 'ENGLISH' }: Props) {
   const [expanded, setExpanded] = useState(false);
+  const isAmharic = language === 'AMHARIC';
+
+  const explanation = isAmharic
+    ? clause.explanationAmharic || clause.explanation
+    : clause.explanation;
+  const suggestion = isAmharic
+    ? clause.suggestionAmharic || clause.suggestion
+    : clause.suggestion;
+
+  const sentimentLabel = isAmharic
+    ? SENTIMENT_LABELS_AMHARIC[clause.sentiment]
+    : SENTIMENT_LABELS[clause.sentiment];
 
   const borderColor = {
     FAVORABLE: 'border-emerald-400',
@@ -48,10 +61,10 @@ export default function ClauseCard({ clause }: Props) {
           </span>
           <div className="min-w-0">
             <h4 className="font-semibold text-gray-900 truncate">
-              {clause.clauseTitle || `Clause ${clause.clauseNumber}`}
+              {clause.clauseTitle || (isAmharic ? `አንቀጽ ${clause.clauseNumber}` : `Clause ${clause.clauseNumber}`)}
             </h4>
             <p className="text-xs text-gray-500 mt-0.5">
-              Severity: {clause.severity}/10
+              {isAmharic ? 'ክብደት' : 'Severity'}: {clause.severity}/10
             </p>
           </div>
         </div>
@@ -66,7 +79,7 @@ export default function ClauseCard({ clause }: Props) {
           </div>
 
           <span className={badgeColor}>
-            {SENTIMENT_LABELS[clause.sentiment]}
+            {sentimentLabel}
           </span>
 
           <svg
@@ -88,7 +101,7 @@ export default function ClauseCard({ clause }: Props) {
           {/* Clause Text */}
           <div className="mt-4">
             <h5 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
-              Clause Text
+              {isAmharic ? 'የአንቀጽ ጽሑፍ' : 'Clause Text'}
             </h5>
             <div className="bg-gray-50 rounded-lg p-4 text-sm text-gray-700 leading-relaxed font-mono text-xs">
               {clause.clauseText}
@@ -96,22 +109,22 @@ export default function ClauseCard({ clause }: Props) {
           </div>
 
           {/* Explanation */}
-          {clause.explanation && (
+          {explanation && (
             <div className="mt-4">
               <h5 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
-                Analysis
+                {isAmharic ? 'ትንታኔ' : 'Analysis'}
               </h5>
-              <p className="text-sm text-gray-700 leading-relaxed">{clause.explanation}</p>
+              <p className="text-sm text-gray-700 leading-relaxed">{explanation}</p>
             </div>
           )}
 
           {/* Suggestion */}
-          {clause.suggestion && (
+          {suggestion && (
             <div className="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
               <h5 className="text-xs font-semibold text-amber-700 uppercase tracking-wider mb-1">
-                💡 Suggested Action
+                💡 {isAmharic ? 'የሚመከር እርምጃ' : 'Suggested Action'}
               </h5>
-              <p className="text-sm text-amber-800">{clause.suggestion}</p>
+              <p className="text-sm text-amber-800">{suggestion}</p>
             </div>
           )}
         </div>

@@ -1,16 +1,130 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { analysisService } from '../services/analysis';
-import type { Analysis as AnalysisType } from '../types';
+import { getErrorMessage } from '../services/api';
+import type { Analysis as AnalysisType, AnalysisLanguage } from '../types';
+import { AI_ERROR_INFO, AI_ERROR_CODES } from '../types';
 import ClauseCard from '../components/ClauseCard';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { RISK_COLORS } from '../types';
 
+// AI errors where retrying is safe and useful (config issues should not be retried)
+const ERRORS_WITHOUT_RETRY: Record<string, boolean> = {
+  [AI_ERROR_CODES.INVALID_API_KEY]: true,
+};
+
+function ErrorState({
+  errorCode,
+  message,
+  onRetry,
+  language = 'ENGLISH',
+}: {
+  errorCode?: string;
+  message?: string;
+  onRetry?: () => void;
+  language?: AnalysisLanguage;
+}) {
+  const info = (errorCode && AI_ERROR_INFO[errorCode]) || AI_ERROR_INFO[AI_ERROR_CODES.GENERIC];
+  const isWarning = info.tone === 'warning';
+  const canRetry = !!onRetry && !(errorCode && ERRORS_WITHOUT_RETRY[errorCode]);
+  const isAmharic = language === 'AMHARIC';
+  // For recognized error codes, prefer the localized standard text so Amharic
+  // users see a proper translation instead of a raw English backend message.
+  // GENERIC (AI_ERROR) is excluded so real backend failure details still surface
+  // (e.g. "Could not extract any clauses") instead of being masked by standard text.
+  const isKnownCode =
+    !!errorCode &&
+    errorCode !== AI_ERROR_CODES.GENERIC &&
+    !!AI_ERROR_INFO[errorCode];
+  const displayTitle = isAmharic ? info.titleAmharic : info.title;
+  const displayMessage = isKnownCode
+    ? (isAmharic ? info.messageAmharic : info.message)
+    : message || (isAmharic ? info.messageAmharic : info.message);
+
+  return (
+    <div className="page-container text-center py-16 animate-fade-in">
+      <div
+        className={`w-20 h-20 rounded-2xl mx-auto mb-6 flex items-center justify-center ${
+          isWarning ? 'bg-amber-100' : 'bg-red-100'
+        }`}
+      >
+        <svg
+          className={`w-10 h-10 ${isWarning ? 'text-amber-600' : 'text-red-500'}`}
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"
+          />
+        </svg>
+      </div>
+      <h2 className={`text-xl font-bold mb-2 ${isWarning ? 'text-amber-900' : 'text-gray-900'}`}>
+        {displayTitle}
+      </h2>
+      <p className="text-gray-500 mb-6 max-w-md mx-auto">{displayMessage}</p>
+      <div className="flex items-center justify-center gap-3 flex-wrap">
+        {canRetry && (
+          <button onClick={onRetry} className="btn-primary">
+            {isAmharic ? 'እንደገና ይሞክሩ' : 'Try Again'}
+          </button>
+        )}
+        <Link to="/" className="btn-secondary">
+          {isAmharic ? 'ወደ ዳሽቦርድ ይመለሱ' : 'Back to Dashboard'}
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+function LanguageToggle({
+  language,
+  onChange,
+}: {
+  language: AnalysisLanguage;
+  onChange: (lang: AnalysisLanguage) => void;
+}) {
+  return (
+    <div className="inline-flex rounded-xl border-2 border-gray-200 overflow-hidden bg-white shadow-sm">
+      <button
+        onClick={() => onChange('ENGLISH')}
+        className={`px-4 py-2 text-sm font-semibold transition-all duration-200 ${
+          language === 'ENGLISH'
+            ? 'bg-ethiopian-green text-white'
+            : 'text-gray-600 hover:bg-gray-50'
+        }`}
+      >
+        🇬🇧 English
+      </button>
+      <button
+        onClick={() => onChange('AMHARIC')}
+        className={`px-4 py-2 text-sm font-semibold transition-all duration-200 ${
+          language === 'AMHARIC'
+            ? 'bg-ethiopian-green text-white'
+            : 'text-gray-600 hover:bg-gray-50'
+        }`}
+      >
+        🇪🇹 አማርኛ
+      </button>
+    </div>
+  );
+}
+
 export default function Analysis() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [analysis, setAnalysis] = useState<AnalysisType | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [errorCode, setErrorCode] = useState<string | undefined>(undefined);
+  const [language, setLanguage] = useState<AnalysisLanguage>(() => {
+    const saved = localStorage.getItem('analysisLanguage');
+    return saved === 'AMHARIC' ? 'AMHARIC' : 'ENGLISH';
+  });
+
   useEffect(() => {
     if (!id) return;
     loadAnalysis();
@@ -31,9 +145,33 @@ export default function Analysis() {
       const data = await analysisService.getFull(id!);
       setAnalysis(data);
       setError('');
+      setErrorCode(undefined);
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to load analysis');
+      setError(getErrorMessage(err, 'Failed to load analysis'));
+      setErrorCode(err.response?.data?.errorCode || err.response?.data?.code);
     } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLanguageChange = (lang: AnalysisLanguage) => {
+    setLanguage(lang);
+    localStorage.setItem('analysisLanguage', lang);
+  };
+
+  /** Re-trigger the AI analysis for a failed contract (e.g. after a quota reset). */
+  const retryAnalysis = async () => {
+    if (!analysis) return;
+    try {
+      setError('');
+      setErrorCode(undefined);
+      setLoading(true);
+      const result = await analysisService.analyze(analysis.contractId);
+      // Navigate to the fresh analysis record so polling picks up its status
+      navigate(`/analysis/${result.analysisId}`);
+    } catch (err: any) {
+      setError(getErrorMessage(err, 'Failed to start analysis'));
+      setErrorCode(err.response?.data?.errorCode);
       setLoading(false);
     }
   };
@@ -48,16 +186,12 @@ export default function Analysis() {
 
   if (error) {
     return (
-      <div className="page-container text-center py-16 animate-fade-in">
-        <div className="w-16 h-16 rounded-2xl bg-red-100 mx-auto mb-4 flex items-center justify-center">
-          <svg className="w-8 h-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
-          </svg>
-        </div>
-        <h2 className="text-xl font-bold text-gray-900 mb-2">Analysis Not Found</h2>
-        <p className="text-gray-500 mb-6">{error}</p>
-        <Link to="/" className="btn-primary">Back to Dashboard</Link>
-      </div>
+      <ErrorState
+        errorCode={errorCode}
+        message={error}
+        onRetry={loadAnalysis}
+        language={language}
+      />
     );
   }
 
@@ -94,37 +228,45 @@ export default function Analysis() {
   // Failed state
   if (analysis.status === 'FAILED') {
     return (
-      <div className="page-container text-center py-16 animate-fade-in">
-        <div className="w-20 h-20 rounded-2xl bg-red-100 mx-auto mb-6 flex items-center justify-center">
-          <svg className="w-10 h-10 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        </div>
-        <h2 className="text-xl font-bold text-gray-900 mb-2">Analysis Failed</h2>
-        <p className="text-gray-500 mb-2">{analysis.errorMessage || 'Something went wrong'}</p>
-        <button onClick={loadAnalysis} className="btn-primary mt-4">
-          Try Again
-        </button>
-      </div>
+      <ErrorState
+        errorCode={analysis.errorCode}
+        message={analysis.errorMessage}
+        onRetry={retryAnalysis}
+        language={language}
+      />
     );
   }
 
   // Completed state
   const score = analysis.overallScore ?? 0;
   const clauseAnalyses = analysis.clauseAnalyses || [];
+  const isAmharic = language === 'AMHARIC';
   const badClauses = clauseAnalyses.filter(
     (c) => c.sentiment === 'UNFAVORABLE' || c.sentiment === 'RISKY',
   );
   const goodClauses = clauseAnalyses.filter((c) => c.sentiment === 'FAVORABLE');
   const neutralClauses = clauseAnalyses.filter((c) => c.sentiment === 'NEUTRAL');
 
+  const summary = isAmharic
+    ? analysis.summaryAmharic || analysis.summary
+    : analysis.summary;
+  const keyFindings = isAmharic
+    ? (analysis.keyFindingsAmharic?.length ? analysis.keyFindingsAmharic : analysis.keyFindings)
+    : analysis.keyFindings;
+  const recommendations = isAmharic
+    ? (analysis.recommendationsAmharic?.length ? analysis.recommendationsAmharic : analysis.recommendations)
+    : analysis.recommendations;
+
   return (
     <div className="page-container animate-fade-in">
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm text-gray-500 mb-6">
-        <Link to="/" className="hover:text-ethiopian-green transition-colors">Dashboard</Link>
-        <span>→</span>
-        <span className="text-gray-900">{analysis.contract?.title}</span>
+      {/* Breadcrumb + Language Toggle */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <div className="flex items-center gap-2 text-sm text-gray-500">
+          <Link to="/" className="hover:text-ethiopian-green transition-colors">Dashboard</Link>
+          <span>→</span>
+          <span className="text-gray-900">{analysis.contract?.title}</span>
+        </div>
+        <LanguageToggle language={language} onChange={handleLanguageChange} />
       </div>
 
       {/* Score Overview Card */}
@@ -184,40 +326,48 @@ export default function Analysis() {
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
               <div className="p-3 bg-emerald-50 rounded-xl">
                 <p className="text-2xl font-bold text-emerald-700">{goodClauses.length}</p>
-                <p className="text-xs text-emerald-600 font-medium">Good Clauses</p>
+                <p className="text-xs text-emerald-600 font-medium">
+                  {isAmharic ? 'ጥሩ አንቀጾች' : 'Good Clauses'}
+                </p>
               </div>
               <div className="p-3 bg-gray-50 rounded-xl">
                 <p className="text-2xl font-bold text-gray-700">{neutralClauses.length}</p>
-                <p className="text-xs text-gray-600 font-medium">Neutral</p>
+                <p className="text-xs text-gray-600 font-medium">
+                  {isAmharic ? 'ገለልተኛ' : 'Neutral'}
+                </p>
               </div>
               <div className="p-3 bg-red-50 rounded-xl">
                 <p className="text-2xl font-bold text-red-700">{badClauses.length}</p>
-                <p className="text-xs text-red-600 font-medium">Needs Attention</p>
+                <p className="text-xs text-red-600 font-medium">
+                  {isAmharic ? 'ትኩረት የሚሹ' : 'Needs Attention'}
+                </p>
               </div>
               <div className="p-3 bg-amber-50 rounded-xl">
                 <p className="text-2xl font-bold text-amber-700">{clauseAnalyses.length}</p>
-                <p className="text-xs text-amber-600 font-medium">Total Clauses</p>
+                <p className="text-xs text-amber-600 font-medium">
+                  {isAmharic ? 'ጠቅላላ አንቀጾች' : 'Total Clauses'}
+                </p>
               </div>
             </div>
 
-            {analysis.summary && (
-              <p className="text-gray-600 leading-relaxed">{analysis.summary}</p>
+            {summary && (
+              <p className="text-gray-600 leading-relaxed">{summary}</p>
             )}
           </div>
         </div>
 
         {/* Key Findings & Recommendations */}
         <div className="grid md:grid-cols-2 gap-6 mt-8 pt-8 border-t border-gray-100">
-          {analysis.keyFindings && analysis.keyFindings.length > 0 && (
+          {keyFindings && keyFindings.length > 0 && (
             <div>
               <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
                 <span className="w-6 h-6 rounded-lg bg-red-100 flex items-center justify-center">
                   <span className="text-xs">🔍</span>
                 </span>
-                Key Findings
+                {isAmharic ? 'ቁልፍ ግኝቶች' : 'Key Findings'}
               </h3>
               <ul className="space-y-2">
-                {analysis.keyFindings.map((finding, i) => (
+                {keyFindings.map((finding, i) => (
                   <li
                     key={i}
                     className="flex items-start gap-2 text-sm text-gray-700"
@@ -230,16 +380,16 @@ export default function Analysis() {
             </div>
           )}
 
-          {analysis.recommendations && analysis.recommendations.length > 0 && (
+          {recommendations && recommendations.length > 0 && (
             <div>
               <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
                 <span className="w-6 h-6 rounded-lg bg-amber-100 flex items-center justify-center">
                   <span className="text-xs">💡</span>
                 </span>
-                Recommendations
+                {isAmharic ? 'ምክሮች' : 'Recommendations'}
               </h3>
               <ul className="space-y-2">
-                {analysis.recommendations.map((rec, i) => (
+                {recommendations.map((rec, i) => (
                   <li
                     key={i}
                     className="flex items-start gap-2 text-sm text-gray-700"
@@ -256,7 +406,9 @@ export default function Analysis() {
 
       {/* Clause-by-Clause Analysis */}
       <div className="mb-8">
-        <h2 className="section-title mb-6">Clause-by-Clause Analysis</h2>
+        <h2 className="section-title mb-6">
+          {isAmharic ? 'የአንቀጽ በአንቀጽ ትንታኔ' : 'Clause-by-Clause Analysis'}
+        </h2>
 
         {/* Summary tabs */}
         <div className="flex flex-wrap gap-3 mb-6">
@@ -267,7 +419,7 @@ export default function Analysis() {
             }}
             className="px-4 py-2 bg-white rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:border-ethiopian-green transition-colors"
           >
-            All Clauses ({clauseAnalyses.length})
+            {isAmharic ? 'ሁሉም አንቀጾች' : 'All Clauses'} ({clauseAnalyses.length})
           </button>
           {badClauses.length > 0 && (
             <button
@@ -277,7 +429,7 @@ export default function Analysis() {
               }}
               className="px-4 py-2 bg-red-50 rounded-xl border border-red-200 text-sm font-medium text-red-700 hover:bg-red-100 transition-colors"
             >
-              ⚠️ Needs Attention ({badClauses.length})
+              ⚠️ {isAmharic ? 'ትኩረት የሚሹ' : 'Needs Attention'} ({badClauses.length})
             </button>
           )}
           {goodClauses.length > 0 && (
@@ -288,7 +440,7 @@ export default function Analysis() {
               }}
               className="px-4 py-2 bg-emerald-50 rounded-xl border border-emerald-200 text-sm font-medium text-emerald-700 hover:bg-emerald-100 transition-colors"
             >
-              ✅ Good ({goodClauses.length})
+              ✅ {isAmharic ? 'ጥሩ' : 'Good'} ({goodClauses.length})
             </button>
           )}
         </div>
@@ -300,11 +452,11 @@ export default function Analysis() {
               <span className="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center text-sm">
                 ⚠️
               </span>
-              Clauses That Need Attention
+              {isAmharic ? 'ትኩረት የሚሹ አንቀጾች' : 'Clauses That Need Attention'}
             </h3>
             <div className="space-y-3">
               {badClauses.map((clause) => (
-                <ClauseCard key={clause.id} clause={clause} />
+                <ClauseCard key={clause.id} clause={clause} language={language} />
               ))}
             </div>
           </div>
@@ -317,11 +469,11 @@ export default function Analysis() {
               <span className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center text-sm">
                 ✅
               </span>
-              Favorable Clauses
+              {isAmharic ? 'ጥሩ አንቀጾች' : 'Favorable Clauses'}
             </h3>
             <div className="space-y-3">
               {goodClauses.map((clause) => (
-                <ClauseCard key={clause.id} clause={clause} />
+                <ClauseCard key={clause.id} clause={clause} language={language} />
               ))}
             </div>
           </div>
@@ -333,11 +485,11 @@ export default function Analysis() {
             <span className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-sm">
               📋
             </span>
-            All Clauses
+            {isAmharic ? 'ሁሉም አንቀጾች' : 'All Clauses'}
           </h3>
           <div className="space-y-3">
             {clauseAnalyses.map((clause) => (
-              <ClauseCard key={clause.id} clause={clause} />
+              <ClauseCard key={clause.id} clause={clause} language={language} />
             ))}
           </div>
         </div>

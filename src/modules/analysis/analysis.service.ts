@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../core/prisma.service';
 import { AiService, ClauseAnalysisInput } from '../ai/ai.service';
+import { AiError, AiErrorCode } from '../ai/ai-types';
 import { TextExtractionService } from '../contracts/text-extraction.service';
 import { AnalysisStatus, Contract, ContractLanguage } from '@prisma/client';
 
@@ -229,6 +230,8 @@ export class AnalysisService {
               riskLevel: clauseResult.riskLevel as any,
               explanation: clauseResult.explanation,
               suggestion: clauseResult.suggestion,
+              explanationAmharic: clauseResult.explanationAmharic,
+              suggestionAmharic: clauseResult.suggestionAmharic,
               severity: clauseResult.severity,
             },
           });
@@ -243,8 +246,11 @@ export class AnalysisService {
           overallScore: result.overallScore,
           riskLevel: result.riskLevel,
           summary: result.summary,
+          summaryAmharic: result.summaryAmharic,
           keyFindings: result.keyFindings,
+          keyFindingsAmharic: result.keyFindingsAmharic,
           recommendations: result.recommendations,
+          recommendationsAmharic: result.recommendationsAmharic,
           processedAt: new Date(),
         },
       });
@@ -253,12 +259,14 @@ export class AnalysisService {
         `Analysis ${analysisId} completed: score=${result.overallScore}, risk=${result.riskLevel}`,
       );
     } catch (error) {
+      const isAiError = error instanceof AiError;
       // Mark analysis as failed
       await this.prisma.analysis.update({
         where: { id: analysisId },
         data: {
           status: 'FAILED',
           errorMessage: error.message,
+          errorCode: isAiError ? error.code : AiErrorCode.GENERIC,
           processedAt: new Date(),
         },
       });

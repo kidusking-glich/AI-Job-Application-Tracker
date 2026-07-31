@@ -103,9 +103,13 @@ model Analysis {
   overallScore  Int?           // 1-100 score (higher = better)
   riskLevel     RiskLevel?     @default(LOW)
   summary       String?        // Overall summary of the contract analysis
+  summaryAmharic String?       // Amharic version of the summary
   keyFindings   Json?          // JSON array of key findings
+  keyFindingsAmharic Json?     // JSON array of Amharic key findings
   recommendations Json?        // JSON array of recommendations
+  recommendationsAmharic Json? // JSON array of Amharic recommendations
   errorMessage  String?        // If analysis failed
+  errorCode     String?        // Machine-readable error code (e.g. AI_QUOTA_EXCEEDED)
   processedAt   DateTime?
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
@@ -129,6 +133,8 @@ model ClauseAnalysis {
   riskLevel       RiskLevel       @default(LOW)
   explanation     String?         // Why this clause is good/bad
   suggestion      String?         // Suggested improvement or alternative wording
+  explanationAmharic String?      // Amharic version of the explanation
+  suggestionAmharic  String?      // Amharic version of the suggestion
   severity        Int?            // 1-10 severity (10 = worst)
   createdAt       DateTime        @default(now())
 
