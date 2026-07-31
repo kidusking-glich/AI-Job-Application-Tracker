@@ -4,6 +4,7 @@ import { contractsService } from '../services/contracts';
 import { analysisService } from '../services/analysis';
 import type { Contract, Analysis } from '../types';
 import LoadingSpinner from '../components/LoadingSpinner';
+import SupportDonation from '../components/SupportDonation';
 import { RISK_COLORS } from '../types';
 
 export default function Dashboard() {
@@ -219,6 +220,9 @@ export default function Dashboard() {
           No contracts match "{search}"
         </div>
       )}
+
+      {/* Telebirr Support */}
+      <SupportDonation />
     </div>
   );
 }
