@@ -1,0 +1,7 @@
+# Ethiopian Contract Reader - robots.txt
+# Replace the domain below with the real production domain before deploying.
+
+User-agent: *
+Allow: /
+
+Sitemap: https://contract-reader.example.com/sitemap.xml
