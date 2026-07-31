@@ -149,6 +149,48 @@ export class AdminService {
   }
 
   /**
+   * Transfer the super admin role to another user. Transactional: the new
+   * super admin is granted the role and the requester is demoted, so there is
+   * always exactly one super admin. The requester is also made a regular admin
+   * so they can still be managed (but no longer access the dashboard).
+   */
+  async transferSuperAdmin(requesterId: string, targetUserId: string) {
+    if (requesterId === targetUserId) {
+      throw new BadRequestException('You are already the super admin.');
+    }
+
+    const target = await this.prisma.user.findUnique({
+      where: { id: targetUserId, deletedAt: null },
+    });
+    if (!target) {
+      throw new NotFoundException('User not found');
+    }
+    if (target.isSuperAdmin) {
+      throw new BadRequestException('That user is already the super admin.');
+    }
+    if (!target.emailVerifiedAt) {
+      throw new BadRequestException(
+        'Only email-verified users can be made the super admin — transferring would lock out the dashboard.',
+      );
+    }
+
+    await this.prisma.$transaction([
+      this.prisma.user.update({
+        where: { id: target.id },
+        data: { isSuperAdmin: true, isAdmin: true },
+      }),
+      this.prisma.user.update({
+        where: { id: requesterId },
+        data: { isSuperAdmin: false, isAdmin: true },
+      }),
+    ]);
+
+    return {
+      message: `Super admin role transferred to ${target.email}.`,
+    };
+  }
+
+  /**
    * Auto-recovery safety net: if no super admin exists (e.g. the flag was
    * cleared or the account was deleted directly in the DB), promote the first
    * registered non-deleted user so the dashboard can never be permanently

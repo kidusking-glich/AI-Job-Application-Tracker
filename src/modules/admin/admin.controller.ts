@@ -37,6 +37,11 @@ export class AdminController {
     return this.adminService.createAdminUser(createAdminUserDto);
   }
 
+  @Post('users/:id/transfer-super-admin')
+  transferSuperAdmin(@CurrentUser() requester: User, @Param('id') id: string) {
+    return this.adminService.transferSuperAdmin(requester.id, id);
+  }
+
   @Delete('users/:id')
   deleteUser(@CurrentUser() requester: User, @Param('id') id: string) {
     return this.adminService.deleteUser(requester.id, id);

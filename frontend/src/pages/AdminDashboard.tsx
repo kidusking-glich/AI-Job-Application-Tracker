@@ -40,6 +40,7 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState<'users' | 'requests'>('requests');
   const [busyId, setBusyId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [confirmTransferId, setConfirmTransferId] = useState<string | null>(null);
   const [notice, setNotice] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const currentUser = authService.getUser();
 
@@ -89,6 +90,33 @@ export default function AdminDashboard() {
       setNotice({
         type: 'error',
         text: err.response?.data?.message || 'Failed to update role.',
+      });
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const handleTransferSuperAdmin = async (user: AdminUser) => {
+    setBusyId(user.id);
+    setConfirmTransferId(null);
+    setNotice(null);
+    try {
+      const res = await adminService.transferSuperAdmin(user.id);
+      setNotice({
+        type: 'success',
+        text: `${res.message} You are now a regular admin and will be signed out of the dashboard.`,
+      });
+      // Reflect the demotion locally so the AdminRoute redirects after reload.
+      if (currentUser) {
+        localStorage.setItem('user', JSON.stringify({ ...currentUser, isSuperAdmin: false }));
+      }
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 2200);
+    } catch (err: any) {
+      setNotice({
+        type: 'error',
+        text: err.response?.data?.message || 'Failed to transfer super admin role.',
       });
     } finally {
       setBusyId(null);
@@ -524,24 +552,46 @@ export default function AdminDashboard() {
                           </button>
                         )}
                         {currentUser?.id !== u.id && !u.isSuperAdmin && (
-                          <button
-                            onClick={() =>
-                              confirmDeleteId === u.id ? handleDeleteUser(u) : setConfirmDeleteId(u.id)
-                            }
-                            onBlur={() => setConfirmDeleteId((v) => (v === u.id ? null : v))}
-                            disabled={busyId === u.id}
-                            className={`px-2 py-1 rounded-md text-xs font-semibold transition-colors disabled:opacity-50 ${
-                              confirmDeleteId === u.id
-                                ? 'bg-red-600 text-white hover:bg-red-700'
-                                : 'bg-red-50 text-red-700 hover:bg-red-100'
-                            }`}
-                          >
-                            {busyId === u.id
-                              ? '...'
-                              : confirmDeleteId === u.id
-                                ? '⚠️ Confirm delete?'
-                                : '🗑 Delete'}
-                          </button>
+                          <>
+                            <button
+                              onClick={() =>
+                                confirmTransferId === u.id
+                                  ? handleTransferSuperAdmin(u)
+                                  : setConfirmTransferId(u.id)
+                              }
+                              onBlur={() => setConfirmTransferId((v) => (v === u.id ? null : v))}
+                              disabled={busyId === u.id}
+                              className={`px-2 py-1 rounded-md text-xs font-semibold transition-colors disabled:opacity-50 ${
+                                confirmTransferId === u.id
+                                  ? 'bg-ethiopian-green text-white hover:bg-ethiopian-green/90'
+                                  : 'bg-amber-50 text-amber-700 hover:bg-amber-100'
+                              }`}
+                            >
+                              {busyId === u.id
+                                ? '...'
+                                : confirmTransferId === u.id
+                                  ? '👑 Confirm transfer?'
+                                  : '👑 Transfer'}
+                            </button>
+                            <button
+                              onClick={() =>
+                                confirmDeleteId === u.id ? handleDeleteUser(u) : setConfirmDeleteId(u.id)
+                              }
+                              onBlur={() => setConfirmDeleteId((v) => (v === u.id ? null : v))}
+                              disabled={busyId === u.id}
+                              className={`px-2 py-1 rounded-md text-xs font-semibold transition-colors disabled:opacity-50 ${
+                                confirmDeleteId === u.id
+                                  ? 'bg-red-600 text-white hover:bg-red-700'
+                                  : 'bg-red-50 text-red-700 hover:bg-red-100'
+                              }`}
+                            >
+                              {busyId === u.id
+                                ? '...'
+                                : confirmDeleteId === u.id
+                                  ? '⚠️ Confirm delete?'
+                                  : '🗑 Delete'}
+                            </button>
+                          </>
                         )}
                       </div>
                     </td>

@@ -9,6 +9,8 @@ import Dashboard from './pages/Dashboard';
 import NewContract from './pages/NewContract';
 import Analysis from './pages/Analysis';
 import VerifyEmail from './pages/VerifyEmail';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 import AdminDashboard from './pages/AdminDashboard';
 
 export default function App() {
@@ -20,6 +22,8 @@ export default function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/verify-email" element={<VerifyEmail />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path="/new" element={<ProtectedRoute><NewContract /></ProtectedRoute>} />
           <Route path="/analysis/:id" element={<ProtectedRoute><Analysis /></ProtectedRoute>} />

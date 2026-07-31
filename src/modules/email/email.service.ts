@@ -53,6 +53,25 @@ export class EmailService {
     }
   }
 
+  async sendPasswordResetEmail(to: string, resetUrl: string): Promise<void> {
+    await this.sendEmail({
+      to,
+      subject: 'Reset your password — Contract Reader',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 24px;">
+          <h2 style="color: #111827;">Reset your password</h2>
+          <p style="color: #4b5563;">We received a request to reset your password. Click the button below to choose a new one.</p>
+          <p style="text-align: center; margin: 32px 0;">
+            <a href="${resetUrl}" style="background-color: #1a7f37; color: #ffffff; padding: 12px 28px; border-radius: 8px; text-decoration: none; font-weight: bold;">Reset Password</a>
+          </p>
+          <p style="color: #6b7280; font-size: 13px; word-break: break-all;">Or copy this link:<br/>${resetUrl}</p>
+          <p style="color: #9ca3af; font-size: 12px;">This link expires in 30 minutes. If you didn't request a password reset, you can ignore this email.</p>
+        </div>
+      `,
+      text: `Reset your Contract Reader password by opening this link: ${resetUrl}. This link expires in 30 minutes.`,
+    });
+  }
+
   async sendVerificationEmail(to: string, verificationUrl: string): Promise<void> {
     await this.sendEmail({
       to,
