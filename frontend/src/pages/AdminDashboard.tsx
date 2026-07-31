@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
+import QRCode from 'qrcode';
 import { adminService } from '../services/admin';
 import { authService } from '../services/auth';
-import type { AdminStats, AdminUser, RequestLog, SuperAdminStatus, SystemHealth } from '../types';
+import type { AdminStats, AdminUser, RequestLog, SecurityLog, SuperAdminStatus, SystemHealth } from '../types';
 import LoadingSpinner from '../components/LoadingSpinner';
 
 function timeAgo(dateStr: string | null): string {
@@ -34,16 +35,27 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [requests, setRequests] = useState<RequestLog[]>([]);
+  const [securityLogs, setSecurityLogs] = useState<SecurityLog[]>([]);
   const [health, setHealth] = useState<SystemHealth | null>(null);
   const [superAdminStatus, setSuperAdminStatus] = useState<SuperAdminStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [activeTab, setActiveTab] = useState<'users' | 'requests'>('requests');
+  const [activeTab, setActiveTab] = useState<'users' | 'requests' | 'security'>('requests');
   const [busyId, setBusyId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [confirmTransferId, setConfirmTransferId] = useState<string | null>(null);
   const [notice, setNotice] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const currentUser = authService.getUser();
+
+  // 2FA management state
+  const [twoFaSecret, setTwoFaSecret] = useState<string | null>(null);
+  const [twoFaUrl, setTwoFaUrl] = useState<string | null>(null);
+  const [twoFaQr, setTwoFaQr] = useState<string | null>(null);
+  const [twoFaCode, setTwoFaCode] = useState('');
+  const [twoFaBusy, setTwoFaBusy] = useState(false);
+  const [twoFaNotice, setTwoFaNotice] = useState('');
+  const [twoFaError, setTwoFaError] = useState('');
+  const twoFaEnabled = currentUser?.twoFactorEnabled === true;
 
   // Create-admin form state
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -142,6 +154,63 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleSetup2fa = async () => {
+    setTwoFaBusy(true);
+    setTwoFaNotice('');
+    setTwoFaError('');
+    try {
+      const res = await authService.setup2fa();
+      setTwoFaSecret(res.secret);
+      setTwoFaUrl(res.otpauthUrl);
+      const qr = await QRCode.toDataURL(res.otpauthUrl, { width: 220, margin: 2 });
+      setTwoFaQr(qr);
+    } catch (err: any) {
+      setTwoFaError(err.response?.data?.message || 'Failed to start 2FA setup.');
+    } finally {
+      setTwoFaBusy(false);
+    }
+  };
+
+  const handleEnable2fa = async () => {
+    setTwoFaBusy(true);
+    setTwoFaNotice('');
+    setTwoFaError('');
+    try {
+      const res = await authService.enable2fa(twoFaCode);
+      setTwoFaNotice(res.message);
+      // Refresh the stored user so twoFactorEnabled is accurate.
+      if (currentUser) {
+        localStorage.setItem('user', JSON.stringify({ ...currentUser, twoFactorEnabled: true }));
+      }
+      setTwoFaCode('');
+      setTwoFaSecret(null);
+      setTwoFaUrl(null);
+      setTwoFaQr(null);
+    } catch (err: any) {
+      setTwoFaError(err.response?.data?.message || 'Failed to enable 2FA.');
+    } finally {
+      setTwoFaBusy(false);
+    }
+  };
+
+  const handleDisable2fa = async () => {
+    setTwoFaBusy(true);
+    setTwoFaNotice('');
+    setTwoFaError('');
+    try {
+      const res = await authService.disable2fa(twoFaCode);
+      setTwoFaNotice(res.message);
+      if (currentUser) {
+        localStorage.setItem('user', JSON.stringify({ ...currentUser, twoFactorEnabled: false }));
+      }
+      setTwoFaCode('');
+    } catch (err: any) {
+      setTwoFaError(err.response?.data?.message || 'Failed to disable 2FA.');
+    } finally {
+      setTwoFaBusy(false);
+    }
+  };
+
   const handleResendVerification = async (user: AdminUser) => {
     setBusyId(user.id);
     setNotice(null);
@@ -161,18 +230,20 @@ export default function AdminDashboard() {
   useEffect(() => {
     (async () => {
       try {
-        const [statsData, usersData, requestsData, healthData, superAdminData] = await Promise.all([
+        const [statsData, usersData, requestsData, healthData, superAdminData, securityLogsData] = await Promise.all([
           adminService.getStats(),
           adminService.getUsers(),
           adminService.getRequests(50),
           adminService.getHealth(),
           adminService.getSuperAdminStatus(),
+          adminService.getSecurityLogs(100),
         ]);
         setStats(statsData);
         setUsers(usersData);
         setRequests(requestsData);
         setHealth(healthData);
         setSuperAdminStatus(superAdminData);
+        setSecurityLogs(securityLogsData);
       } catch (err: any) {
         setError(err.response?.data?.message || 'Failed to load admin data.');
       } finally {
@@ -313,6 +384,78 @@ export default function AdminDashboard() {
             <p className="text-xs text-gray-500 uppercase font-semibold mb-2">Transferring the role</p>
             <p className="text-xs text-gray-600">{superAdminStatus?.transferNote}</p>
             <p className="text-xs text-gray-400 mt-2">Use the 👑 Transfer button in the Users tab.</p>
+          </div>
+          {/* Two-factor authentication */}
+          <div className="p-4 rounded-xl bg-gray-50 border border-gray-100">
+            <p className="text-xs text-gray-500 uppercase font-semibold mb-2">Two-factor authentication</p>
+            {twoFaNotice && (
+              <p className="text-sm text-emerald-700 mb-2">{twoFaNotice}</p>
+            )}
+            {twoFaError && (
+              <p className="text-sm text-red-700 mb-2">{twoFaError}</p>
+            )}
+            {twoFaEnabled ? (
+              <>
+                <p className="text-sm text-emerald-700 mb-2">🟢 Enabled — a TOTP code is required to sign in.</p>
+                <div className="flex gap-2 items-end">
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={6}
+                    value={twoFaCode}
+                    onChange={(e) => setTwoFaCode(e.target.value.replace(/\D/g, ''))}
+                    className="input-field !py-2 text-center tracking-widest font-bold"
+                    placeholder="6-digit code"
+                  />
+                  <button
+                    onClick={handleDisable2fa}
+                    disabled={twoFaBusy || twoFaCode.length !== 6}
+                    className="px-3 py-2 rounded-lg text-xs font-semibold text-red-700 bg-red-50 hover:bg-red-100 transition-colors disabled:opacity-50 whitespace-nowrap"
+                  >
+                    {twoFaBusy ? '...' : 'Disable'}
+                  </button>
+                </div>
+              </>
+            ) : twoFaQr ? (
+              <>
+                <p className="text-sm text-gray-600 mb-2">
+                  Scan with Google Authenticator or a compatible app, then enter the 6-digit code below.
+                </p>
+                {twoFaQr && <img src={twoFaQr} alt="2FA QR code" className="w-40 h-40 mx-auto mb-2 rounded-lg bg-white p-1 border border-gray-200" />}
+                <p className="text-xs text-gray-500 mb-2 break-all">Secret: <code className="font-mono">{twoFaSecret}</code></p>
+                <div className="flex gap-2 items-end">
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={6}
+                    value={twoFaCode}
+                    onChange={(e) => setTwoFaCode(e.target.value.replace(/\D/g, ''))}
+                    className="input-field !py-2 text-center tracking-widest font-bold"
+                    placeholder="6-digit code"
+                  />
+                  <button
+                    onClick={handleEnable2fa}
+                    disabled={twoFaBusy || twoFaCode.length !== 6}
+                    className="px-3 py-2 rounded-lg text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 transition-colors disabled:opacity-50 whitespace-nowrap"
+                  >
+                    {twoFaBusy ? '...' : 'Enable'}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-gray-600 mb-2">
+                  Protect the super admin account with time-based one-time codes from your authenticator app.
+                </p>
+                <button
+                  onClick={handleSetup2fa}
+                  disabled={twoFaBusy}
+                  className="px-3 py-2 rounded-lg text-xs font-semibold text-white bg-gray-900 hover:bg-gray-800 transition-colors disabled:opacity-50"
+                >
+                  {twoFaBusy ? '...' : '🔐 Set up 2FA'}
+                </button>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -456,7 +599,7 @@ export default function AdminDashboard() {
 
       {/* Tabs */}
       <div className="flex gap-2 mb-4">
-        {(['requests', 'users'] as const).map((tab) => (
+        {(['requests', 'users', 'security'] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -466,7 +609,7 @@ export default function AdminDashboard() {
                 : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
             }`}
           >
-            {tab === 'requests' ? '🌐 Recent Requests' : '👥 Users'}
+            {tab === 'requests' ? '🌐 Recent Requests' : tab === 'users' ? '👥 Users' : '🔐 Security Log'}
           </button>
         ))}
       </div>
@@ -506,6 +649,41 @@ export default function AdminDashboard() {
                     <td className="px-4 py-2.5 text-gray-400 text-xs">
                       {new Date(r.createdAt).toLocaleString()}
                     </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Security log table */}
+      {activeTab === 'security' && (
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-gray-50 text-left text-xs text-gray-500 uppercase">
+                  <th className="px-4 py-3">Action</th>
+                  <th className="px-4 py-3">User</th>
+                  <th className="px-4 py-3">IP</th>
+                  <th className="px-4 py-3">When</th>
+                </tr>
+              </thead>
+              <tbody>
+                {securityLogs.length === 0 && (
+                  <tr><td colSpan={4} className="px-4 py-10 text-center text-gray-400">No security events logged yet</td></tr>
+                )}
+                {securityLogs.map((log) => (
+                  <tr key={log.id} className="border-t border-gray-50 hover:bg-gray-50/60 transition-colors">
+                    <td className="px-4 py-2.5">
+                      <span className="px-2 py-0.5 rounded-md text-xs font-bold bg-gray-100 text-gray-800">
+                        {log.action}
+                      </span>
+                    </td>
+                    <td className="px-4 py-2.5 text-gray-700">{log.user?.email ?? log.email ?? '—'}</td>
+                    <td className="px-4 py-2.5 text-gray-500">{log.ip ?? '—'}</td>
+                    <td className="px-4 py-2.5 text-gray-400 text-xs">{new Date(log.createdAt).toLocaleString()}</td>
                   </tr>
                 ))}
               </tbody>

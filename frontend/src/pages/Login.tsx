@@ -14,6 +14,10 @@ export default function Login() {
   const [resending, setResending] = useState(false);
   const [resendMessage, setResendMessage] = useState('');
 
+  // 2FA step
+  const [mfaToken, setMfaToken] = useState<string | null>(null);
+  const [mfaCode, setMfaCode] = useState('');
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -22,7 +26,12 @@ export default function Login() {
     setLoading(true);
 
     try {
-      await authService.login(email, password);
+      const res = await authService.login(email, password);
+      if ('requiresTwoFactor' in res && res.requiresTwoFactor) {
+        setMfaToken(res.mfaToken);
+        setLoading(false);
+        return;
+      }
       navigate('/');
     } catch (err: any) {
       const msg = err.response?.data?.message || 'Login failed. Please try again.';
@@ -31,6 +40,20 @@ export default function Login() {
       if (typeof msg === 'string' && msg.toLowerCase().includes('verify your email')) {
         setShowResend(true);
       }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerify2fa = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+    try {
+      await authService.verify2fa(mfaToken as string, mfaCode);
+      navigate('/');
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Invalid two-factor code. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -73,7 +96,12 @@ export default function Login() {
 
         {/* Login Form */}
         <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
-          <form onSubmit={handleSubmit} className="space-y-5">
+          {mfaToken && (
+            <div className="mb-6 p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-sm text-emerald-800">
+              🔐 Enter the 6-digit code from your authenticator app.
+            </div>
+          )}
+          <form onSubmit={mfaToken ? handleVerify2fa : handleSubmit} className="space-y-5">
             {error && (
               <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700 animate-fade-in">
                 {error}
@@ -114,6 +142,24 @@ export default function Login() {
               </Link>
             </div>
 
+            {mfaToken && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Two-factor code
+                </label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={6}
+                  value={mfaCode}
+                  onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ''))}
+                  className="input-field text-center tracking-[0.4em] font-bold text-lg"
+                  placeholder="••••••"
+                  required
+                />
+              </div>
+            )}
+
             <button
               type="submit"
               disabled={loading}
@@ -122,8 +168,10 @@ export default function Login() {
               {loading ? (
                 <>
                   <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Signing in...
+                  {mfaToken ? 'Verifying...' : 'Signing in...'}
                 </>
+              ) : mfaToken ? (
+                'Verify & Sign In'
               ) : (
                 'Sign In'
               )}

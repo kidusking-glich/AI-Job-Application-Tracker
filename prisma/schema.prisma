@@ -55,14 +55,17 @@ model User {
   verificationTokenExpiresAt DateTime?
   resetPasswordToken         String?
   resetPasswordTokenExpiresAt DateTime?
+  twoFactorSecret            String?
+  twoFactorEnabled           Boolean     @default(false)
   createdAt                  DateTime    @default(now())
   updatedAt                  DateTime    @updatedAt
   deletedAt                  DateTime?   @map("deleted_at")
 
   // Relationships
-  contracts   Contract[]
-  analyses    Analysis[]
-  requestLogs RequestLog[]
+  contracts    Contract[]
+  analyses     Analysis[]
+  requestLogs  RequestLog[]
+  securityLogs SecurityLog[]
 
   @@map("users")
 }
@@ -82,6 +85,22 @@ model RequestLog {
 
   @@index([createdAt])
   @@map("request_logs")
+}
+
+model SecurityLog {
+  id        String   @id @default(uuid())
+  action    String   // e.g. PASSWORD_RESET, TRANSFER_SUPER_ADMIN, ROLE_CHANGE, DELETE_USER, CREATE_ADMIN, TWO_FA_ENABLED, TWO_FA_DISABLED
+  userId    String?  // actor
+  email     String?  // target/actor email for display
+  ip        String?
+  userAgent String?
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@map("security_logs")
 }
 
 model Contract {

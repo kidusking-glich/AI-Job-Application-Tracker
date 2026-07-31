@@ -15,7 +15,11 @@ import { VerifyEmailDto } from './dto/verify-email.dto';
 import { ResendVerificationDto } from './dto/resend-verification.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { Verify2faDto } from './dto/verify-2fa.dto';
+import { TwoFactorCodeDto } from './dto/two-factor-code.dto';
 import { EmailService } from '../email/email.service';
+import { SecurityLogService } from '../../core/security-log.service';
+import { buildTotpUri, generateTotpSecret, verifyTotpCode } from './totp.util';
 import { VerificationService } from '../email/verification.service';
 import {
   VERIFICATION_TTL_MS,
@@ -29,6 +33,9 @@ const RESET_PASSWORD_TTL_MS = 30 * 60 * 1000; // 30 minutes
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
+  private readonly totpAttempts = new Map<string, { count: number; resetAt: number }>();
+  private readonly TOTP_MAX_ATTEMPTS = 5;
+  private readonly TOTP_WINDOW_MS = 15 * 60 * 1000;
 
   constructor(
     private prisma: PrismaService,
@@ -36,7 +43,30 @@ export class AuthService {
     private emailService: EmailService,
     private verificationService: VerificationService,
     private configService: ConfigService,
+    private securityLogService: SecurityLogService,
   ) {}
+
+  private checkTotpAttempts(key: string): void {
+    const now = Date.now();
+    const entry = this.totpAttempts.get(key);
+    if (entry && now < entry.resetAt && entry.count >= this.TOTP_MAX_ATTEMPTS) {
+      throw new UnauthorizedException('Too many failed two-factor attempts. Please sign in again.');
+    }
+    if (entry && now >= entry.resetAt) {
+      this.totpAttempts.delete(key);
+    }
+  }
+
+  private registerTotpFailure(key: string): void {
+    const now = Date.now();
+    const entry = this.totpAttempts.get(key);
+    const nextCount = (entry && now < entry.resetAt ? entry.count : 0) + 1;
+    this.totpAttempts.set(key, { count: nextCount, resetAt: now + this.TOTP_WINDOW_MS });
+  }
+
+  private clearTotpAttempts(key: string): void {
+    this.totpAttempts.delete(key);
+  }
 
   async signup(signupDto: SignupDto) {
     const { email, password, name } = signupDto;
@@ -102,7 +132,7 @@ export class AuthService {
     };
   }
 
-  async login(loginDto: LoginDto) {
+  async login(loginDto: LoginDto, context?: { ip?: string; userAgent?: string }) {
     const { email, password } = loginDto;
 
     const user = await this.prisma.user.findUnique({
@@ -110,22 +140,74 @@ export class AuthService {
     });
 
     if (!user) {
+      await this.securityLogService.log({
+        action: 'LOGIN_FAILED',
+        email,
+        ip: context?.ip ?? null,
+        userAgent: context?.userAgent ?? null,
+        metadata: { reason: 'invalid_credentials' },
+      });
       throw new UnauthorizedException('Invalid credentials');
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
+      await this.securityLogService.log({
+        action: 'LOGIN_FAILED',
+        userId: user.id,
+        email: user.email,
+        ip: context?.ip ?? null,
+        userAgent: context?.userAgent ?? null,
+        metadata: { reason: 'invalid_password' },
+      });
       throw new UnauthorizedException('Invalid credentials');
     }
 
     if (!user.emailVerifiedAt) {
+      await this.securityLogService.log({
+        action: 'LOGIN_FAILED',
+        userId: user.id,
+        email: user.email,
+        ip: context?.ip ?? null,
+        userAgent: context?.userAgent ?? null,
+        metadata: { reason: 'email_not_verified' },
+      });
       throw new UnauthorizedException(
         'Please verify your email before signing in. Check your inbox for the verification link.',
       );
     }
 
+    // If the user has 2FA enabled, do not issue a full session yet. Return a
+    // short-lived MFA ticket that must be exchanged for a real token via
+    // /auth/2fa/verify after proving the TOTP code.
+    if (user.twoFactorEnabled && user.twoFactorSecret) {
+      const mfaToken = this.jwtService.sign(
+        { sub: user.id, email: user.email, mfa: true, version: user.tokenVersion },
+        { expiresIn: '5m' },
+      );
+      await this.securityLogService.log({
+        action: 'LOGIN_MFA_REQUIRED',
+        userId: user.id,
+        email: user.email,
+        ip: context?.ip ?? null,
+        userAgent: context?.userAgent ?? null,
+      });
+      return {
+        requiresTwoFactor: true,
+        mfaToken,
+      };
+    }
+
     const result = this.sanitizeUser(user);
     const token = this.generateToken(user);
+
+    await this.securityLogService.log({
+      action: 'LOGIN_SUCCESS',
+      userId: user.id,
+      email: user.email,
+      ip: context?.ip ?? null,
+      userAgent: context?.userAgent ?? null,
+    });
 
     return {
       access_token: token,
@@ -232,7 +314,147 @@ export class AuthService {
     };
   }
 
-  async resetPassword(resetPasswordDto: ResetPasswordDto) {
+  /** Generate a new TOTP secret for the user (2FA not enabled until verified). */
+  async setupTwoFactor(user: User, context?: { ip?: string; userAgent?: string }) {
+    const secret = generateTotpSecret();
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        twoFactorSecret: secret,
+        twoFactorEnabled: false,
+      },
+    });
+    const otpauthUrl = buildTotpUri(secret, user.email);
+    await this.securityLogService.log({
+      action: 'TWO_FA_SETUP',
+      userId: user.id,
+      email: user.email,
+      ip: context?.ip ?? null,
+      userAgent: context?.userAgent ?? null,
+    });
+    return { secret, otpauthUrl };
+  }
+
+  /** Confirm the TOTP code and enable 2FA. */
+  async enableTwoFactor(
+    user: User,
+    code: string,
+    context?: { ip?: string; userAgent?: string },
+  ) {
+    if (!user.twoFactorSecret) {
+      throw new BadRequestException('No 2FA secret found. Run setup first.');
+    }
+    this.checkTotpAttempts(`2fa:${user.id}`);
+    const valid = await verifyTotpCode(user.twoFactorSecret, code);
+    if (!valid) {
+      this.registerTotpFailure(`2fa:${user.id}`);
+      throw new BadRequestException('Invalid two-factor code.');
+    }
+    this.clearTotpAttempts(`2fa:${user.id}`);
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { twoFactorEnabled: true },
+    });
+    await this.securityLogService.log({
+      action: 'TWO_FA_ENABLED',
+      userId: user.id,
+      email: user.email,
+      ip: context?.ip ?? null,
+      userAgent: context?.userAgent ?? null,
+    });
+    return { message: 'Two-factor authentication enabled.' };
+  }
+
+  /** Verify the current TOTP code and disable 2FA. */
+  async disableTwoFactor(
+    user: User,
+    code: string,
+    context?: { ip?: string; userAgent?: string },
+  ) {
+    if (!user.twoFactorSecret) {
+      throw new BadRequestException('Two-factor authentication is not set up.');
+    }
+    this.checkTotpAttempts(`2fa:${user.id}`);
+    const valid = await verifyTotpCode(user.twoFactorSecret, code);
+    if (!valid) {
+      this.registerTotpFailure(`2fa:${user.id}`);
+      throw new BadRequestException('Invalid two-factor code.');
+    }
+    this.clearTotpAttempts(`2fa:${user.id}`);
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { twoFactorSecret: null, twoFactorEnabled: false },
+    });
+    await this.securityLogService.log({
+      action: 'TWO_FA_DISABLED',
+      userId: user.id,
+      email: user.email,
+      ip: context?.ip ?? null,
+      userAgent: context?.userAgent ?? null,
+    });
+    return { message: 'Two-factor authentication disabled.' };
+  }
+
+  /** Exchange an MFA ticket + TOTP code for a real session token. */
+  async verifyTwoFactor(
+    verify2faDto: Verify2faDto,
+    context?: { ip?: string; userAgent?: string },
+  ) {
+    const { mfaToken, code } = verify2faDto;
+    let payload: { sub?: string; mfa?: boolean; version?: number };
+    try {
+      payload = this.jwtService.verify(mfaToken);
+    } catch {
+      throw new UnauthorizedException('Your two-factor session has expired. Please sign in again.');
+    }
+    if (!payload?.sub || payload.mfa !== true) {
+      throw new UnauthorizedException('Invalid two-factor session.');
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: payload.sub, deletedAt: null },
+    });
+    if (!user || !user.twoFactorEnabled || !user.twoFactorSecret) {
+      throw new UnauthorizedException('Two-factor authentication is not enabled.');
+    }
+    if (user.tokenVersion !== payload.version) {
+      throw new UnauthorizedException('Session invalidated. Please sign in again.');
+    }
+
+    this.checkTotpAttempts(user.id);
+    const valid = await verifyTotpCode(user.twoFactorSecret, code);
+    if (!valid) {
+      this.registerTotpFailure(user.id);
+      await this.securityLogService.log({
+        action: 'TWO_FA_VERIFY_FAILED',
+        userId: user.id,
+        email: user.email,
+        ip: context?.ip ?? null,
+        userAgent: context?.userAgent ?? null,
+      });
+      throw new UnauthorizedException('Invalid two-factor code.');
+    }
+    this.clearTotpAttempts(user.id);
+
+    const result = this.sanitizeUser(user);
+    const token = this.generateToken(user);
+    await this.securityLogService.log({
+      action: 'LOGIN_SUCCESS',
+      userId: user.id,
+      email: user.email,
+      ip: context?.ip ?? null,
+      userAgent: context?.userAgent ?? null,
+    });
+    return {
+      access_token: token,
+      user: result,
+    };
+  }
+
+  async resetPassword(
+    resetPasswordDto: ResetPasswordDto,
+    context?: { ip?: string; userAgent?: string },
+  ) {
     const { token, password } = resetPasswordDto;
     const tokenHash = hashToken(token);
 
@@ -248,7 +470,7 @@ export class AuthService {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    await this.prisma.user.update({
+    const updated = await this.prisma.user.update({
       where: { id: user.id },
       data: {
         password: hashedPassword,
@@ -259,11 +481,27 @@ export class AuthService {
       },
     });
 
+    await this.securityLogService.log({
+      action: 'PASSWORD_RESET',
+      userId: updated.id,
+      email: updated.email,
+      ip: context?.ip ?? null,
+      userAgent: context?.userAgent ?? null,
+    });
+
     return { message: 'Password reset successfully. You can now sign in.' };
   }
 
   private sanitizeUser(user: User) {
-    const { password, verificationToken, verificationTokenExpiresAt, ...result } = user;
+    const {
+      password,
+      verificationToken,
+      verificationTokenExpiresAt,
+      resetPasswordToken,
+      resetPasswordTokenExpiresAt,
+      twoFactorSecret,
+      ...result
+    } = user;
     return result;
   }
 

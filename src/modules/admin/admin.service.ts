@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../core/prisma.service';
 import { RequestLogCleanupService } from '../../core/request-log-cleanup.service';
 import { VerificationService } from '../email/verification.service';
+import { SecurityLogService } from '../../core/security-log.service';
 import { CreateAdminUserDto } from './dto/create-admin-user.dto';
 import * as bcrypt from 'bcrypt';
 
@@ -15,6 +16,7 @@ export class AdminService {
     private cleanupService: RequestLogCleanupService,
     private configService: ConfigService,
     private verificationService: VerificationService,
+    private securityLogService: SecurityLogService,
   ) {}
 
   async getStats() {
@@ -102,7 +104,12 @@ export class AdminService {
     });
   }
 
-  async updateUserRole(requesterId: string, userId: string, isAdmin: boolean) {
+  async updateUserRole(
+    requesterId: string,
+    userId: string,
+    isAdmin: boolean,
+    context?: { ip?: string; userAgent?: string },
+  ) {
     // Prevent self-demotion so an admin can never lock themselves out of the UI
     if (!isAdmin && requesterId === userId) {
       throw new BadRequestException('You cannot remove your own admin rights.');
@@ -125,11 +132,22 @@ export class AdminService {
       }
     }
 
-    return this.prisma.user.update({
+    const updated = await this.prisma.user.update({
       where: { id: userId },
       data: { isAdmin },
       select: { id: true, email: true, name: true, isAdmin: true },
     });
+
+    await this.securityLogService.log({
+      action: 'ROLE_CHANGE',
+      userId: requesterId,
+      email: updated.email,
+      ip: context?.ip ?? null,
+      userAgent: context?.userAgent ?? null,
+      metadata: { isAdmin },
+    });
+
+    return updated;
   }
 
   async resendVerification(userId: string) {
@@ -154,7 +172,11 @@ export class AdminService {
    * always exactly one super admin. The requester is also made a regular admin
    * so they can still be managed (but no longer access the dashboard).
    */
-  async transferSuperAdmin(requesterId: string, targetUserId: string) {
+  async transferSuperAdmin(
+    requesterId: string,
+    targetUserId: string,
+    context?: { ip?: string; userAgent?: string },
+  ) {
     if (requesterId === targetUserId) {
       throw new BadRequestException('You are already the super admin.');
     }
@@ -191,6 +213,15 @@ export class AdminService {
       }),
     ]);
 
+    await this.securityLogService.log({
+      action: 'TRANSFER_SUPER_ADMIN',
+      userId: requesterId,
+      email: target.email,
+      ip: context?.ip ?? null,
+      userAgent: context?.userAgent ?? null,
+      metadata: { from: requesterId, to: targetUserId },
+    });
+
     return {
       message: `Super admin role transferred to ${target.email}.`,
     };
@@ -223,7 +254,11 @@ export class AdminService {
     );
   }
 
-  async deleteUser(requesterId: string, userId: string) {
+  async deleteUser(
+    requesterId: string,
+    userId: string,
+    context?: { ip?: string; userAgent?: string },
+  ) {
     // The super admin must never delete their own account — that would lock
     // everyone out of the admin dashboard permanently.
     if (requesterId === userId) {
@@ -257,10 +292,22 @@ export class AdminService {
       data: { deletedAt: new Date() },
     });
 
+    await this.securityLogService.log({
+      action: 'DELETE_USER',
+      userId: requesterId,
+      email: user.email,
+      ip: context?.ip ?? null,
+      userAgent: context?.userAgent ?? null,
+    });
+
     return { message: `User ${user.email} deleted.` };
   }
 
-  async createAdminUser(createAdminUserDto: CreateAdminUserDto) {
+  async createAdminUser(
+    requesterId: string,
+    createAdminUserDto: CreateAdminUserDto,
+    context?: { ip?: string; userAgent?: string },
+  ) {
     const { email, password, name } = createAdminUserDto;
 
     const existing = await this.prisma.user.findUnique({ where: { email } });
@@ -287,6 +334,14 @@ export class AdminService {
         createdAt: true,
         _count: { select: { contracts: true, analyses: true } },
       },
+    });
+
+    await this.securityLogService.log({
+      action: 'CREATE_ADMIN',
+      userId: requesterId,
+      email: user.email,
+      ip: context?.ip ?? null,
+      userAgent: context?.userAgent ?? null,
     });
 
     return {
@@ -324,6 +379,14 @@ export class AdminService {
       transferNote:
         'Only email-verified users can be made the super admin, and exactly one super admin always exists (transfers are atomic).',
     };
+  }
+
+  async getSecurityLogs(limit = 100) {
+    return this.prisma.securityLog.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: Math.min(Number(limit) || 100, 500),
+      include: { user: { select: { email: true } } },
+    });
   }
 
   async getHealth() {

@@ -1,4 +1,5 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards, Req } from '@nestjs/common';
+import { Request } from 'express';
 import { AdminService } from './admin.service';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { UpdateRoleDto } from './dto/update-role.dto';
@@ -6,6 +7,18 @@ import { CreateAdminUserDto } from './dto/create-admin-user.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { User } from '@prisma/client';
 import { AdminGuard } from './admin.guard';
+
+interface RequestContext {
+  ip?: string;
+  userAgent?: string;
+}
+
+function requestContext(req: Request): RequestContext {
+  return {
+    ip: req.ip,
+    userAgent: req.headers['user-agent'],
+  };
+}
 
 @Controller('admin')
 @UseGuards(JwtAuthGuard, AdminGuard)
@@ -37,19 +50,28 @@ export class AdminController {
     return this.adminService.getRequests(limit ? Number(limit) : undefined);
   }
 
+  @Get('security-logs')
+  getSecurityLogs(@Query('limit') limit?: string) {
+    return this.adminService.getSecurityLogs(limit ? Number(limit) : undefined);
+  }
+
   @Post('users')
-  createAdminUser(@Body() createAdminUserDto: CreateAdminUserDto) {
-    return this.adminService.createAdminUser(createAdminUserDto);
+  createAdminUser(
+    @CurrentUser() requester: User,
+    @Body() createAdminUserDto: CreateAdminUserDto,
+    @Req() req: Request,
+  ) {
+    return this.adminService.createAdminUser(requester.id, createAdminUserDto, requestContext(req));
   }
 
   @Post('users/:id/transfer-super-admin')
-  transferSuperAdmin(@CurrentUser() requester: User, @Param('id') id: string) {
-    return this.adminService.transferSuperAdmin(requester.id, id);
+  transferSuperAdmin(@CurrentUser() requester: User, @Param('id') id: string, @Req() req: Request) {
+    return this.adminService.transferSuperAdmin(requester.id, id, requestContext(req));
   }
 
   @Delete('users/:id')
-  deleteUser(@CurrentUser() requester: User, @Param('id') id: string) {
-    return this.adminService.deleteUser(requester.id, id);
+  deleteUser(@CurrentUser() requester: User, @Param('id') id: string, @Req() req: Request) {
+    return this.adminService.deleteUser(requester.id, id, requestContext(req));
   }
 
   @Patch('users/:id/role')
@@ -57,8 +79,9 @@ export class AdminController {
     @CurrentUser() requester: User,
     @Param('id') id: string,
     @Body() updateRoleDto: UpdateRoleDto,
+    @Req() req: Request,
   ) {
-    return this.adminService.updateUserRole(requester.id, id, updateRoleDto.isAdmin);
+    return this.adminService.updateUserRole(requester.id, id, updateRoleDto.isAdmin, requestContext(req));
   }
 
   @Post('users/:id/resend-verification')

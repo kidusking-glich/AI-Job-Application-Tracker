@@ -2,10 +2,35 @@ import api from './api';
 import type { AuthResponse, User, SignupResponse } from '../types';
 
 export const authService = {
-  async login(email: string, password: string): Promise<AuthResponse> {
-    const { data } = await api.post<AuthResponse>('/auth/login', { email, password });
+  async login(email: string, password: string): Promise<AuthResponse | { requiresTwoFactor: true; mfaToken: string }> {
+    const { data } = await api.post<AuthResponse | { requiresTwoFactor: true; mfaToken: string }>('/auth/login', { email, password });
+    if ('requiresTwoFactor' in data) {
+      return data;
+    }
     localStorage.setItem('token', data.access_token);
     localStorage.setItem('user', JSON.stringify(data.user));
+    return data;
+  },
+
+  async verify2fa(mfaToken: string, code: string): Promise<AuthResponse> {
+    const { data } = await api.post<AuthResponse>('/auth/2fa/verify', { mfaToken, code });
+    localStorage.setItem('token', data.access_token);
+    localStorage.setItem('user', JSON.stringify(data.user));
+    return data;
+  },
+
+  async setup2fa(): Promise<{ secret: string; otpauthUrl: string }> {
+    const { data } = await api.post('/auth/2fa/setup');
+    return data;
+  },
+
+  async enable2fa(code: string): Promise<{ message: string }> {
+    const { data } = await api.post('/auth/2fa/enable', { code });
+    return data;
+  },
+
+  async disable2fa(code: string): Promise<{ message: string }> {
+    const { data } = await api.post('/auth/2fa/disable', { code });
     return data;
   },
 

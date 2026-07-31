@@ -1,5 +1,5 @@
 import api from './api';
-import type { AdminStats, AdminUser, CreateAdminUserInput, RequestLog, SuperAdminStatus, SystemHealth } from '../types';
+import type { AdminStats, AdminUser, CreateAdminUserInput, RequestLog, SecurityLog, SuperAdminStatus, SystemHealth } from '../types';
 
 export const adminService = {
   async getStats(): Promise<AdminStats> {
@@ -14,6 +14,11 @@ export const adminService = {
 
   async getRequests(limit = 50): Promise<RequestLog[]> {
     const { data } = await api.get<RequestLog[]>('/admin/requests', { params: { limit } });
+    return data;
+  },
+
+  async getSecurityLogs(limit = 100): Promise<SecurityLog[]> {
+    const { data } = await api.get<SecurityLog[]>('/admin/security-logs', { params: { limit } });
     return data;
   },
 

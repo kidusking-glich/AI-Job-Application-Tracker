@@ -4,6 +4,7 @@ export interface User {
   name?: string;
   isAdmin?: boolean;
   isSuperAdmin?: boolean;
+  twoFactorEnabled?: boolean;
   emailVerifiedAt?: string | null;
   createdAt: string;
 }
@@ -166,6 +167,18 @@ export interface SuperAdminStatus {
     description: string;
   };
   transferNote: string;
+}
+
+export interface SecurityLog {
+  id: string;
+  action: string;
+  userId?: string | null;
+  email?: string | null;
+  ip?: string | null;
+  userAgent?: string | null;
+  metadata?: unknown;
+  createdAt: string;
+  user?: { email: string } | null;
 }
 
 export interface SystemHealth {
