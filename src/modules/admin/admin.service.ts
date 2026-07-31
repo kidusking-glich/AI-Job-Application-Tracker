@@ -1,9 +1,13 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../core/prisma.service';
+import { VerificationService } from '../email/verification.service';
 
 @Injectable()
 export class AdminService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private verificationService: VerificationService,
+  ) {}
 
   async getStats() {
     const now = new Date();
@@ -87,5 +91,51 @@ export class AdminService {
       take: Math.min(Number(limit) || 50, 500),
       include: { user: { select: { email: true } } },
     });
+  }
+
+  async updateUserRole(requesterId: string, userId: string, isAdmin: boolean) {
+    // Prevent self-demotion so an admin can never lock themselves out of the UI
+    if (!isAdmin && requesterId === userId) {
+      throw new BadRequestException('You cannot remove your own admin rights.');
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId, deletedAt: null },
+    });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Never demote the last remaining admin
+    if (!isAdmin) {
+      const adminCount = await this.prisma.user.count({
+        where: { isAdmin: true, deletedAt: null },
+      });
+      if (adminCount <= 1) {
+        throw new BadRequestException('Cannot demote the last admin.');
+      }
+    }
+
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { isAdmin },
+      select: { id: true, email: true, name: true, isAdmin: true },
+    });
+  }
+
+  async resendVerification(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId, deletedAt: null },
+    });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    if (user.emailVerifiedAt) {
+      throw new BadRequestException('This user is already verified.');
+    }
+
+    await this.verificationService.issueAndSendVerification(user);
+
+    return { message: `Verification email sent to ${user.email}` };
   }
 }

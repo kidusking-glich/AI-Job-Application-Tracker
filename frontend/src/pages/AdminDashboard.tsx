@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { adminService } from '../services/admin';
+import { authService } from '../services/auth';
 import type { AdminStats, AdminUser, RequestLog } from '../types';
 import LoadingSpinner from '../components/LoadingSpinner';
 
@@ -24,6 +25,46 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState<'users' | 'requests'>('requests');
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [notice, setNotice] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const currentUser = authService.getUser();
+
+  const handleToggleRole = async (user: AdminUser) => {
+    const target = !user.isAdmin;
+    setBusyId(user.id);
+    setNotice(null);
+    try {
+      await adminService.updateUserRole(user.id, target);
+      setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, isAdmin: target } : u)));
+      setNotice({
+        type: 'success',
+        text: target ? `${user.email} is now an admin.` : `${user.email} is no longer an admin.`,
+      });
+    } catch (err: any) {
+      setNotice({
+        type: 'error',
+        text: err.response?.data?.message || 'Failed to update role.',
+      });
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const handleResendVerification = async (user: AdminUser) => {
+    setBusyId(user.id);
+    setNotice(null);
+    try {
+      const res = await adminService.resendVerification(user.id);
+      setNotice({ type: 'success', text: res.message });
+    } catch (err: any) {
+      setNotice({
+        type: 'error',
+        text: err.response?.data?.message || 'Failed to send verification email.',
+      });
+    } finally {
+      setBusyId(null);
+    }
+  };
 
   useEffect(() => {
     (async () => {
@@ -202,6 +243,17 @@ export default function AdminDashboard() {
       {/* Users table */}
       {activeTab === 'users' && (
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          {notice && (
+            <div
+              className={`px-4 py-3 text-sm border-b animate-fade-in ${
+                notice.type === 'success'
+                  ? 'bg-emerald-50 text-emerald-800 border-emerald-100'
+                  : 'bg-red-50 text-red-700 border-red-100'
+              }`}
+            >
+              {notice.text}
+            </div>
+          )}
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -212,11 +264,12 @@ export default function AdminDashboard() {
                   <th className="px-4 py-3">Contracts</th>
                   <th className="px-4 py-3">Analyses</th>
                   <th className="px-4 py-3">Joined</th>
+                  <th className="px-4 py-3">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {users.length === 0 && (
-                  <tr><td colSpan={6} className="px-4 py-10 text-center text-gray-400">No users yet</td></tr>
+                  <tr><td colSpan={7} className="px-4 py-10 text-center text-gray-400">No users yet</td></tr>
                 )}
                 {users.map((u) => (
                   <tr key={u.id} className="border-t border-gray-50 hover:bg-gray-50/60 transition-colors">
@@ -241,6 +294,34 @@ export default function AdminDashboard() {
                     <td className="px-4 py-2.5 text-gray-700">{u._count.contracts}</td>
                     <td className="px-4 py-2.5 text-gray-700">{u._count.analyses}</td>
                     <td className="px-4 py-2.5 text-gray-400 text-xs">{new Date(u.createdAt).toLocaleDateString()}</td>
+                    <td className="px-4 py-2.5">
+                      <div className="flex flex-col gap-1 min-w-[120px]">
+                        {currentUser?.id === u.id ? (
+                          <span className="px-2 py-1 text-xs text-gray-400 italic">(you — cannot demote yourself)</span>
+                        ) : (
+                          <button
+                            onClick={() => handleToggleRole(u)}
+                            disabled={busyId === u.id}
+                            className={`px-2 py-1 rounded-md text-xs font-semibold transition-colors disabled:opacity-50 ${
+                              u.isAdmin
+                                ? 'bg-red-50 text-red-700 hover:bg-red-100'
+                                : 'bg-purple-50 text-purple-700 hover:bg-purple-100'
+                            }`}
+                          >
+                            {busyId === u.id ? '...' : u.isAdmin ? '⬇ Demote' : '⬆ Promote to admin'}
+                          </button>
+                        )}
+                        {!u.emailVerifiedAt && (
+                          <button
+                            onClick={() => handleResendVerification(u)}
+                            disabled={busyId === u.id}
+                            className="px-2 py-1 rounded-md text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 transition-colors disabled:opacity-50"
+                          >
+                            {busyId === u.id ? '...' : '📧 Resend verification'}
+                          </button>
+                        )}
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>

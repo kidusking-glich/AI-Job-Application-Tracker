@@ -16,4 +16,14 @@ export const adminService = {
     const { data } = await api.get<RequestLog[]>('/admin/requests', { params: { limit } });
     return data;
   },
+
+  async updateUserRole(id: string, isAdmin: boolean): Promise<{ id: string; email: string; name?: string; isAdmin: boolean }> {
+    const { data } = await api.patch(`/admin/users/${id}/role`, { isAdmin });
+    return data;
+  },
+
+  async resendVerification(id: string): Promise<{ message: string }> {
+    const { data } = await api.post(`/admin/users/${id}/resend-verification`);
+    return data;
+  },
 };

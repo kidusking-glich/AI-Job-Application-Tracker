@@ -6,19 +6,21 @@ import {
   NotFoundException,
   Logger,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../core/prisma.service';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
-import { createHash, randomBytes } from 'crypto';
 import { SignupDto } from './dto/signup.dto';
 import { LoginDto } from './dto/login.dto';
 import { VerifyEmailDto } from './dto/verify-email.dto';
 import { ResendVerificationDto } from './dto/resend-verification.dto';
 import { EmailService } from '../email/email.service';
+import { VerificationService } from '../email/verification.service';
+import {
+  VERIFICATION_TTL_MS,
+  generateVerificationToken,
+  hashToken,
+} from './verification.util';
 import { User } from '@prisma/client';
-
-const VERIFICATION_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 @Injectable()
 export class AuthService {
@@ -28,7 +30,7 @@ export class AuthService {
     private prisma: PrismaService,
     private jwtService: JwtService,
     private emailService: EmailService,
-    private configService: ConfigService,
+    private verificationService: VerificationService,
   ) {}
 
   async signup(signupDto: SignupDto) {
@@ -43,14 +45,14 @@ export class AuthService {
     const userCount = await this.prisma.user.count();
     const isFirstUser = userCount === 0;
 
-    const verificationToken = randomBytes(32).toString('hex');
+    const verificationToken = generateVerificationToken();
     const user = await this.prisma.user.create({
       data: {
         email,
         password: hashedPassword,
         name,
         isAdmin: isFirstUser,
-        verificationToken: this.hashToken(verificationToken),
+        verificationToken: hashToken(verificationToken),
         verificationTokenExpiresAt: new Date(Date.now() + VERIFICATION_TTL_MS),
       },
     });
@@ -64,7 +66,7 @@ export class AuthService {
       try {
         await this.emailService.sendVerificationEmail(
           user.email,
-          this.buildVerificationUrl(verificationToken),
+          this.verificationService.buildVerificationUrl(verificationToken),
         );
         return {
           user: result,
@@ -83,7 +85,7 @@ export class AuthService {
       return {
         user: result,
         message: 'Account created. Please verify your email to activate your account.',
-        devVerificationUrl: this.buildVerificationUrl(verificationToken),
+        devVerificationUrl: this.verificationService.buildVerificationUrl(verificationToken),
       };
     }
 
@@ -126,7 +128,7 @@ export class AuthService {
   }
 
   async verifyEmail(verifyEmailDto: VerifyEmailDto) {
-    const tokenHash = this.hashToken(verifyEmailDto.token);
+    const tokenHash = hashToken(verifyEmailDto.token);
 
     const user = await this.prisma.user.findFirst({
       where: { verificationToken: tokenHash, deletedAt: null },
@@ -171,34 +173,9 @@ export class AuthService {
       return { message: 'Your email is already verified. You can sign in now.' };
     }
 
-    const verificationToken = randomBytes(32).toString('hex');
-    await this.prisma.user.update({
-      where: { id: user.id },
-      data: {
-        verificationToken: this.hashToken(verificationToken),
-        verificationTokenExpiresAt: new Date(Date.now() + VERIFICATION_TTL_MS),
-      },
-    });
-
-    if (!this.emailService.isConfigured) {
-      throw new BadRequestException('Email service is not configured. Please contact support.');
-    }
-
-    await this.emailService.sendVerificationEmail(
-      user.email,
-      this.buildVerificationUrl(verificationToken),
-    );
+    await this.verificationService.issueAndSendVerification(user);
 
     return { message: 'A new verification email has been sent. Please check your inbox.' };
-  }
-
-  private buildVerificationUrl(token: string): string {
-    const frontendUrl = this.configService.get<string>('FRONTEND_URL', 'http://localhost:5173');
-    return `${frontendUrl}/verify-email?token=${token}`;
-  }
-
-  private hashToken(token: string): string {
-    return createHash('sha256').update(token).digest('hex');
   }
 
   private sanitizeUser(user: User) {
