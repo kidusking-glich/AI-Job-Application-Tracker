@@ -21,11 +21,7 @@ import { SecurityLogService } from '../../core/security-log.service';
 import { RateLimiter } from '../../core/rate-limiter';
 import { buildTotpUri, generateTotpSecret, verifyTotpCode } from './totp.util';
 import { VerificationService } from '../email/verification.service';
-import {
-  VERIFICATION_TTL_MS,
-  generateVerificationToken,
-  hashToken,
-} from './verification.util';
+import { generateVerificationToken, hashToken } from './verification.util';
 import { User } from '@prisma/client';
 
 const RESET_PASSWORD_TTL_MS = 30 * 60 * 1000; // 30 minutes
@@ -64,7 +60,10 @@ export class AuthService {
     return `${email.toLowerCase().trim()}|${ip}`;
   }
 
-  async signup(signupDto: SignupDto) {
+  async signup(
+    signupDto: SignupDto,
+    context?: { ip?: string; userAgent?: string },
+  ) {
     const { email, password, name } = signupDto;
 
     const existingUser = await this.prisma.user.findUnique({
@@ -78,7 +77,6 @@ export class AuthService {
     const userCount = await this.prisma.user.count();
     const isFirstUser = userCount === 0;
 
-    const verificationToken = generateVerificationToken();
     const user = await this.prisma.user.create({
       data: {
         email,
@@ -86,52 +84,29 @@ export class AuthService {
         name,
         isAdmin: isFirstUser,
         isSuperAdmin: isFirstUser,
-        verificationToken: hashToken(verificationToken),
-        verificationTokenExpiresAt: new Date(Date.now() + VERIFICATION_TTL_MS),
+        // Email verification is disabled: accounts are verified immediately.
+        emailVerifiedAt: new Date(),
       },
     });
 
     const result = this.sanitizeUser(user);
+    // Auto-sign-in: issue a session token right away so the user lands in the
+    // app without a separate login step.
+    const token = this.generateToken(user);
 
-    // Send the verification email (non-fatal if email service is unavailable)
-    const emailConfigured = this.emailService.isConfigured;
-
-    if (emailConfigured) {
-      try {
-        await this.emailService.sendVerificationEmail(
-          user.email,
-          this.verificationService.buildVerificationUrl(verificationToken),
-        );
-        return {
-          user: result,
-          message:
-            'Account created. Please check your email to verify your account.',
-        };
-      } catch (err) {
-        this.logger.error(`Failed to send verification email: ${err.message}`);
-      }
-    } else {
-      this.logger.warn(
-        'MAILERSEND_API_KEY not set — verification email not sent',
-      );
-    }
-
-    // Dev convenience: only expose the verification link when email is NOT configured.
-    // Never return it in production (email configured but send failed).
-    if (!emailConfigured) {
-      return {
-        user: result,
-        message:
-          'Account created. Please verify your email to activate your account.',
-        devVerificationUrl:
-          this.verificationService.buildVerificationUrl(verificationToken),
-      };
-    }
+    // Audit the auto-sign-in, mirroring the LOGIN_SUCCESS security-log pattern.
+    await this.securityLogService.log({
+      action: 'SIGNUP',
+      userId: user.id,
+      email: user.email,
+      ip: context?.ip ?? null,
+      userAgent: context?.userAgent ?? null,
+    });
 
     return {
+      access_token: token,
       user: result,
-      message:
-        'Account created, but the verification email could not be sent. Please request a new one from the login page.',
+      message: 'Account created successfully. You are now signed in.',
     };
   }
 
@@ -180,19 +155,8 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    if (!user.emailVerifiedAt) {
-      await this.securityLogService.log({
-        action: 'LOGIN_FAILED',
-        userId: user.id,
-        email: user.email,
-        ip: context?.ip ?? null,
-        userAgent: context?.userAgent ?? null,
-        metadata: { reason: 'email_not_verified' },
-      });
-      throw new UnauthorizedException(
-        'Please verify your email before signing in. Check your inbox for the verification link.',
-      );
-    }
+    // Email verification is disabled, so unverified accounts are allowed to
+    // sign in (legacy accounts created before verification was disabled).
 
     // If the user has 2FA enabled, do not issue a full session yet. Return a
     // short-lived MFA ticket that must be exchanged for a real token via
@@ -324,7 +288,7 @@ export class AuthService {
       where: { email, deletedAt: null },
     });
 
-    if (user && user.emailVerifiedAt) {
+    if (user) {
       const token = generateVerificationToken();
       const tokenHash = hashToken(token);
       await this.prisma.user.update({
@@ -365,7 +329,7 @@ export class AuthService {
     };
   }
 
-  /** Generate a new TOTP secret for the user (2FA not enabled until verified). */
+  /** Generate a new TOTP secret for the user (2FA is not enabled until confirmed). */
   async setupTwoFactor(
     user: User,
     context?: { ip?: string; userAgent?: string },

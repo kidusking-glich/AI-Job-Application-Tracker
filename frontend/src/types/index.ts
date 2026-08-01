@@ -197,9 +197,9 @@ export interface SystemHealth {
 }
 
 export interface SignupResponse {
+  access_token: string;
   user: User;
   message: string;
-  devVerificationUrl?: string;
 }
 
 export type AnalysisLanguage = 'ENGLISH' | 'AMHARIC';

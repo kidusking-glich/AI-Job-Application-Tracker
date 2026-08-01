@@ -13,11 +13,6 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Unverified email flow
-  const [showResend, setShowResend] = useState(false);
-  const [resending, setResending] = useState(false);
-  const [resendMessage, setResendMessage] = useState('');
-
   // 2FA step
   const [mfaToken, setMfaToken] = useState<string | null>(null);
   const [mfaCode, setMfaCode] = useState('');
@@ -25,8 +20,6 @@ export default function Login() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    setShowResend(false);
-    setResendMessage('');
     setLoading(true);
 
     try {
@@ -42,10 +35,6 @@ export default function Login() {
       const msg = getErrorMessage(err, 'Login failed. Please try again.');
       setError(msg);
       toast(msg, 'error');
-      // If the account exists but is not verified, offer a resend option
-      if (msg.toLowerCase().includes('verify your email')) {
-        setShowResend(true);
-      }
     } finally {
       setLoading(false);
     }
@@ -65,22 +54,6 @@ export default function Login() {
       toast(msg, 'error');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleResend = async () => {
-    setResending(true);
-    setResendMessage('');
-    try {
-      const res = await authService.resendVerification(email);
-      setResendMessage(res.message);
-      toast(res.message, 'success');
-    } catch (err: any) {
-      const msg = getErrorMessage(err, 'Failed to resend verification email.');
-      setResendMessage(msg);
-      toast(msg, 'error');
-    } finally {
-      setResending(false);
     }
   };
 
@@ -191,23 +164,6 @@ export default function Login() {
               )}
             </button>
           </form>
-
-          {/* Resend verification */}
-          {showResend && (
-            <div className="mt-5 p-4 bg-ethiopian-yellow/10 border border-ethiopian-yellow/30 rounded-xl text-sm animate-fade-in">
-              <p className="text-yellow-700 dark:text-ethiopian-yellow font-medium mb-2">📧 Haven't verified your email?</p>
-              {resendMessage && (
-                <p className="text-gray-700 dark:text-gray-300 mb-2">{resendMessage}</p>
-              )}
-              <button
-                onClick={handleResend}
-                disabled={resending}
-                className="text-emerald-700 dark:text-[#4ade80] font-semibold hover:underline disabled:opacity-50"
-              >
-                {resending ? 'Sending...' : 'Resend verification email'}
-              </button>
-            </div>
-          )}
 
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-600 dark:text-gray-400">

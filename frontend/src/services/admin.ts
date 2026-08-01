@@ -27,11 +27,6 @@ export const adminService = {
     return data;
   },
 
-  async resendVerification(id: string): Promise<{ message: string }> {
-    const { data } = await api.post(`/admin/users/${id}/resend-verification`);
-    return data;
-  },
-
   async getHealth(): Promise<SystemHealth> {
     const { data } = await api.get<SystemHealth>('/admin/health');
     return data;

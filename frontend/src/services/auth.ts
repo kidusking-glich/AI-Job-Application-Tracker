@@ -36,16 +36,15 @@ export const authService = {
 
   async signup(email: string, password: string, name?: string): Promise<SignupResponse> {
     const { data } = await api.post<SignupResponse>('/auth/signup', { email, password, name });
+    // Auto-sign-in: the backend issues a session token on signup, so store it
+    // just like a successful login.
+    localStorage.setItem('token', data.access_token);
+    localStorage.setItem('user', JSON.stringify(data.user));
     return data;
   },
 
   async verifyEmail(token: string): Promise<{ message: string; user: User }> {
     const { data } = await api.post('/auth/verify-email', { token });
-    return data;
-  },
-
-  async resendVerification(email: string): Promise<{ message: string }> {
-    const { data } = await api.post('/auth/resend-verification', { email });
     return data;
   },
 

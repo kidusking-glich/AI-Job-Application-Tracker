@@ -1,6 +1,7 @@
 import { AuthService } from './auth.service';
 import {
   BadRequestException,
+  ConflictException,
   HttpStatus,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -94,6 +95,89 @@ describe('AuthService resetPassword token invalidation', () => {
       },
     });
     expect(result.message).toContain('reset');
+  });
+});
+
+describe('AuthService signup auto-verification', () => {
+  let prisma: any;
+  let securityLog: any;
+  let service: AuthService;
+
+  beforeEach(() => {
+    prisma = {
+      user: {
+        findUnique: jest.fn(),
+        count: jest.fn(),
+        create: jest.fn(),
+      },
+    };
+    securityLog = { log: jest.fn() };
+    service = new AuthService(
+      prisma,
+      { sign: jest.fn(() => 'mocked-token') } as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      securityLog,
+    );
+    mockedHash.mockReset();
+    mockedHash.mockResolvedValue('hashed-password');
+  });
+
+  it('creates the account already verified (email verification disabled)', async () => {
+    prisma.user.findUnique.mockResolvedValue(null);
+    prisma.user.count.mockResolvedValue(1);
+    prisma.user.create.mockImplementation(({ data }: any) => ({
+      id: 'user-1',
+      email: data.email,
+      password: data.password,
+      name: data.name,
+      isAdmin: data.isAdmin,
+      isSuperAdmin: data.isSuperAdmin,
+      emailVerifiedAt: data.emailVerifiedAt,
+      tokenVersion: 0,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }));
+
+    const result = await service.signup({
+      email: 'new@example.com',
+      password: 'secret123',
+      name: 'New User',
+    });
+
+    expect(prisma.user.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        email: 'new@example.com',
+        emailVerifiedAt: expect.any(Date),
+      }),
+    });
+    expect(result.user.emailVerifiedAt).toBeInstanceOf(Date);
+    expect(result.message).toContain('signed in');
+    // Auto-sign-in: the backend issues a session token right away.
+    expect(result.access_token).toBe('mocked-token');
+    expect(result).not.toHaveProperty('devVerificationUrl');
+    // The auto-sign-in is recorded in the security log like LOGIN_SUCCESS.
+    expect(securityLog.log).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'SIGNUP',
+        userId: 'user-1',
+        email: 'new@example.com',
+      }),
+    );
+  });
+
+  it('rejects a signup with an email that is already in use', async () => {
+    prisma.user.findUnique.mockResolvedValue({
+      id: 'existing',
+      email: 'taken@example.com',
+    });
+
+    await expect(
+      service.signup({ email: 'taken@example.com', password: 'secret123' }),
+    ).rejects.toBeInstanceOf(ConflictException);
+    expect(prisma.user.create).not.toHaveBeenCalled();
+    expect(securityLog.log).not.toHaveBeenCalled();
   });
 });
 

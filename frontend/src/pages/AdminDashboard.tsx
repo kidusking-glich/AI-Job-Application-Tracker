@@ -221,22 +221,6 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleResendVerification = async (user: AdminUser) => {
-    setBusyId(user.id);
-    setNotice(null);
-    try {
-      const res = await adminService.resendVerification(user.id);
-      setNotice({ type: 'success', text: res.message });
-      toast(res.message, 'success');
-    } catch (err: any) {
-      const msg = getErrorMessage(err, 'Failed to send verification email.');
-      setNotice({ type: 'error', text: msg });
-      toast(msg, 'error');
-    } finally {
-      setBusyId(null);
-    }
-  };
-
   useEffect(() => {
     (async () => {
       try {
@@ -774,15 +758,6 @@ export default function AdminDashboard() {
                             }`}
                           >
                             {busyId === u.id ? '...' : u.isAdmin ? '⬇ Demote' : '⬆ Promote to admin'}
-                          </button>
-                        )}
-                        {!u.emailVerifiedAt && (
-                          <button
-                            onClick={() => handleResendVerification(u)}
-                            disabled={busyId === u.id}
-                            className="px-2 py-1 rounded-md text-xs font-semibold text-blue-700 bg-blue-100 hover:bg-blue-200 border border-blue-500/25 transition-colors disabled:opacity-50 dark:text-blue-300 dark:bg-blue-500/10 dark:hover:bg-blue-500/20"
-                          >
-                            {busyId === u.id ? '...' : '📧 Resend verification'}
                           </button>
                         )}
                         {currentUser?.id !== u.id && !u.isSuperAdmin && (

@@ -21,8 +21,7 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     // Skip the redirect for auth endpoints: a 401 from login means invalid
-    // credentials or an unverified email, and the page must stay put so the
-    // error message and "resend verification" flow can be shown.
+    // credentials, and the page must stay put so the error message can be shown.
     const url: string = error.config?.url ?? '';
     if (error.response?.status === 401 && !url.startsWith('/auth/')) {
       localStorage.removeItem('token');
