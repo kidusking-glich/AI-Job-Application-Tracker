@@ -23,5 +23,5 @@
     "noFallthroughCasesInSwitch": false,
     "types": ["node", "jest"]
   },
-  "exclude": ["frontend", "node_modules", "dist"]
+  "exclude": ["frontend", "node_modules", "dist", "prisma.config.ts"]
 }

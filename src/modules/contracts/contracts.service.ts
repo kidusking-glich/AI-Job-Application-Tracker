@@ -9,6 +9,7 @@ import { CreateContractDto } from './dto/create-contract.dto';
 import { UpdateContractDto } from './dto/update-contract.dto';
 import { QueryContractDto } from './dto/query-contract.dto';
 import { TextExtractionService } from './text-extraction.service';
+import { getUploadDir } from './upload-storage.util';
 import { Contract } from '@prisma/client';
 import * as fs from 'fs';
 
@@ -23,7 +24,9 @@ export interface PaginatedContracts {
 @Injectable()
 export class ContractsService {
   private readonly logger = new Logger(ContractsService.name);
-  private readonly uploadDir = './uploads/contracts';
+  // Vercel serverless only allows writes under /tmp; locally we keep the
+  // traditional ./uploads folder.
+  private readonly uploadDir = getUploadDir();
 
   constructor(
     private prisma: PrismaService,
@@ -33,9 +36,17 @@ export class ContractsService {
   }
 
   private ensureUploadDirExists() {
-    if (!fs.existsSync(this.uploadDir)) {
-      fs.mkdirSync(this.uploadDir, { recursive: true });
-      this.logger.log(`Created upload directory: ${this.uploadDir}`);
+    try {
+      if (!fs.existsSync(this.uploadDir)) {
+        fs.mkdirSync(this.uploadDir, { recursive: true });
+        this.logger.log(`Created upload directory: ${this.uploadDir}`);
+      }
+    } catch (error) {
+      // Never let a filesystem issue take down the whole app (e.g. read-only
+      // filesystem on Vercel). Uploads will fail individually with a clear error.
+      this.logger.warn(
+        `Could not create upload directory ${this.uploadDir}: ${error.message}`,
+      );
     }
   }
 
@@ -69,8 +80,11 @@ export class ContractsService {
       },
     });
 
-    // Attempt to extract text from the uploaded file (async, non-blocking)
-    this.extractAndUpdateContent(
+    // Extract text from the uploaded file synchronously (awaited) so it
+    // reliably completes before the response returns. Vercel serverless
+    // freezes/kills fire-and-forget work once the response is sent, so a
+    // non-blocking call would silently never extract text in production.
+    await this.extractAndUpdateContent(
       contract.id,
       file.path,
       file.originalname,
@@ -85,7 +99,9 @@ export class ContractsService {
 
   /**
    * Extract text from the uploaded file and update the contract record.
-   * Runs asynchronously so the upload response is not blocked.
+   * Runs during the upload request so extraction completes on serverless
+   * platforms (Vercel). Failures are caught here so the contract record is
+   * still created even when extraction cannot succeed.
    */
   private async extractAndUpdateContent(
     contractId: string,
@@ -117,7 +133,8 @@ export class ContractsService {
       this.logger.error(
         `Failed to extract text for contract ${contractId}: ${error.message}`,
       );
-      // Non-blocking: contract is still created, analysis will fail gracefully later
+      // Extraction failures are swallowed here so the contract is still
+      // created; analysis will surface a clear error later if needed.
     }
   }
 

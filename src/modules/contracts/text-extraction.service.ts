@@ -116,16 +116,25 @@ export class TextExtractionService {
   }
 
   /**
-   * Extract text from a PDF using pdf-parse (for selectable text).
+   * Extract text from a PDF using pdf-parse v2 (for selectable text).
+   * v2 exports a PDFParse class (ESM/CJS): instantiate with the file buffer
+   * and call getText(), instead of the removed v1 callable API.
    */
   private async tryPdfParse(filePath: string): Promise<string | null> {
     try {
-      const pdfParse = (await import('pdf-parse')) as unknown as (
-        dataBuffer: Buffer,
-      ) => Promise<{ text: string; numpages: number }>;
+      const { PDFParse } = (await import('pdf-parse')) as any;
       const dataBuffer = fs.readFileSync(filePath);
-      const data = await pdfParse(dataBuffer);
-      return (data.text || '').trim() || null;
+      const parser = new PDFParse({ data: dataBuffer });
+      try {
+        const result = await parser.getText();
+        return (result?.text || '').trim() || null;
+      } finally {
+        try {
+          await parser.destroy?.();
+        } catch {
+          // Ignore cleanup errors; extraction already succeeded.
+        }
+      }
     } catch (error) {
       this.logger.warn(`pdf-parse failed: ${error.message}`);
       return null;

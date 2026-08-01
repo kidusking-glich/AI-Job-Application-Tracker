@@ -13,8 +13,10 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { diskStorage } from 'multer';
-import { extname } from 'path';
+import { memoryStorage } from 'multer';
+import * as fs from 'fs';
+import * as path from 'path';
+import { getUploadDir } from './upload-storage.util';
 import { ContractsService } from './contracts.service';
 import { CreateContractDto } from './dto/create-contract.dto';
 import { UpdateContractDto } from './dto/update-contract.dto';
@@ -23,8 +25,21 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { User } from '@prisma/client';
 
-const CONTRACT_UPLOAD_DIR = './uploads/contracts';
 const MAX_FILE_SIZE = 30 * 1024 * 1024; // 30MB (increased for high-res scanned docs)
+
+/**
+ * Persist an in-memory multer file to disk so downstream services (OCR/text
+ * extraction) can read it by path. Returns the absolute file path.
+ */
+function persistUpload(file: Express.Multer.File): string {
+  const dir = getUploadDir();
+  fs.mkdirSync(dir, { recursive: true });
+  const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+  const ext = path.extname(file.originalname);
+  const filePath = path.join(dir, `contract-${uniqueSuffix}${ext}`);
+  fs.writeFileSync(filePath, file.buffer);
+  return filePath;
+}
 
 @Controller('contracts')
 @UseGuards(JwtAuthGuard)
@@ -42,15 +57,7 @@ export class ContractsController {
   @Post('upload')
   @UseInterceptors(
     FileInterceptor('file', {
-      storage: diskStorage({
-        destination: CONTRACT_UPLOAD_DIR,
-        filename: (req, file, cb) => {
-          const uniqueSuffix =
-            Date.now() + '-' + Math.round(Math.random() * 1e9);
-          const ext = extname(file.originalname);
-          cb(null, `contract-${uniqueSuffix}${ext}`);
-        },
-      }),
+      storage: memoryStorage(),
       fileFilter: (req, file, cb) => {
         const allowedMimes = [
           'application/pdf',
@@ -82,6 +89,9 @@ export class ContractsController {
     if (!file) {
       throw new BadRequestException('No file uploaded');
     }
+    // multer gave us the file in memory; write it to a writable dir (/tmp on
+    // Vercel) so OCR/text extraction can read it by path, then hand it off.
+    file.path = persistUpload(file);
     return this.contractsService.createFromFile(
       user.id,
       file,
