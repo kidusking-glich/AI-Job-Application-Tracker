@@ -72,8 +72,9 @@ export default function Profile() {
   const infoRows = [
     { label: 'Email', value: user.email, icon: '✉️' },
     {
+      // Email verification is disabled — all accounts are verified on signup.
       label: 'Account status',
-      value: user.emailVerifiedAt ? '✅ Email verified' : '⏳ Email not verified',
+      value: '✅ Email verified',
       icon: '🔐',
     },
     {
