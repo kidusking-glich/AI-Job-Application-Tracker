@@ -399,7 +399,7 @@ export class AuthService {
       throw new BadRequestException('No 2FA secret found. Run setup first.');
     }
     this.totpLimiter.check(`2fa:${user.id}`);
-    const valid = await verifyTotpCode(user.twoFactorSecret, code);
+    const valid = verifyTotpCode(user.twoFactorSecret, code);
     if (!valid) {
       this.totpLimiter.registerFailure(`2fa:${user.id}`);
       throw new BadRequestException('Invalid two-factor code.');
@@ -429,7 +429,7 @@ export class AuthService {
       throw new BadRequestException('Two-factor authentication is not set up.');
     }
     this.totpLimiter.check(`2fa:${user.id}`);
-    const valid = await verifyTotpCode(user.twoFactorSecret, code);
+    const valid = verifyTotpCode(user.twoFactorSecret, code);
     if (!valid) {
       this.totpLimiter.registerFailure(`2fa:${user.id}`);
       throw new BadRequestException('Invalid two-factor code.');
@@ -482,7 +482,7 @@ export class AuthService {
     }
 
     this.totpLimiter.check(user.id);
-    const valid = await verifyTotpCode(user.twoFactorSecret, code);
+    const valid = verifyTotpCode(user.twoFactorSecret, code);
     if (!valid) {
       this.totpLimiter.registerFailure(user.id);
       await this.securityLogService.log({

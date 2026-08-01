@@ -13,15 +13,15 @@ jest.mock('bcrypt', () => ({
   compare: jest.fn(),
 }));
 
-// otplib v13 ships ESM/TS sources in node_modules that Jest's default transform
-// pipeline cannot parse. This spec only exercises resetPassword, so stub otplib
-// with the exact exports totp.util.ts expects at module load.
+// otplib v12 is CommonJS; stub its authenticator to keep module load light
+// and deterministic for the flows under test.
 jest.mock('otplib', () => ({
-  generateSecret: jest.fn(() => 'FAKESECRET'),
-  generateURI: jest.fn(() => 'otpauth://totp/test@example.com'),
-  verify: jest.fn(() => ({ valid: true })),
-  ScureBase32Plugin: class {},
-  NobleCryptoPlugin: class {},
+  authenticator: {
+    generateSecret: jest.fn(() => 'FAKESECRET'),
+    keyuri: jest.fn(() => 'otpauth://totp/test@example.com'),
+    check: jest.fn(() => true),
+    options: {},
+  },
 }));
 
 const mockedHash = bcrypt.hash as jest.Mock;
