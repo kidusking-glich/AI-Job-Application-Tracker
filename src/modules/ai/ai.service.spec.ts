@@ -17,7 +17,8 @@ describe('MockAiProvider Amharic output', () => {
     {
       clauseNumber: 1,
       title: 'Liability',
-      content: 'The party shall not be liable for any loss, indemnify and waive all claims.',
+      content:
+        'The party shall not be liable for any loss, indemnify and waive all claims.',
     },
     {
       clauseNumber: 2,
@@ -33,7 +34,12 @@ describe('MockAiProvider Amharic output', () => {
   ];
 
   async function analyze(): Promise<ContractAnalysisResult> {
-    const promise = provider.analyzeContract('Test Contract', 'content', clauses, 'ENGLISH');
+    const promise = provider.analyzeContract(
+      'Test Contract',
+      'content',
+      clauses,
+      'ENGLISH',
+    );
     // Mirrors the mock's simulated `setTimeout(resolve, 2000)` delay
     await jest.advanceTimersByTimeAsync(2000);
     return promise;
@@ -98,7 +104,9 @@ describe('MockAiProvider Amharic output', () => {
     const badCount = result.clauses.filter(
       (c) => c.sentiment === 'UNFAVORABLE' || c.sentiment === 'RISKY',
     ).length;
-    const goodCount = result.clauses.filter((c) => c.sentiment === 'FAVORABLE').length;
+    const goodCount = result.clauses.filter(
+      (c) => c.sentiment === 'FAVORABLE',
+    ).length;
 
     expect(
       result.keyFindingsAmharic!.some((f) => f.includes(String(badCount))),

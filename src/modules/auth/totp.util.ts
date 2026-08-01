@@ -18,10 +18,19 @@ export function buildTotpUri(secret: string, account: string): string {
 }
 
 /** Verify a 6-digit TOTP code against a secret (1 epoch = 30s tolerance for clock skew). */
-export async function verifyTotpCode(secret: string, code: string): Promise<boolean> {
+export async function verifyTotpCode(
+  secret: string,
+  code: string,
+): Promise<boolean> {
   if (!secret || !code || !/^\d{6}$/.test(code)) {
     return false;
   }
-  const result = await verify({ secret, crypto, base32, token: code, epochTolerance: 1 });
+  const result = await verify({
+    secret,
+    crypto,
+    base32,
+    token: code,
+    epochTolerance: 1,
+  });
   return result.valid === true;
 }

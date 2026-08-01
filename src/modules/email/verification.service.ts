@@ -18,12 +18,18 @@ export class VerificationService {
   ) {}
 
   buildVerificationUrl(token: string): string {
-    const frontendUrl = this.configService.get<string>('FRONTEND_URL', 'http://localhost:5173');
+    const frontendUrl = this.configService.get<string>(
+      'FRONTEND_URL',
+      'http://localhost:5173',
+    );
     return buildVerificationUrl(frontendUrl, token);
   }
 
   /** Generate a fresh token, store its hash + expiry on the user, and email the link. */
-  async issueAndSendVerification(user: { id: string; email: string }): Promise<void> {
+  async issueAndSendVerification(user: {
+    id: string;
+    email: string;
+  }): Promise<void> {
     const token = generateVerificationToken();
     await this.prisma.user.update({
       where: { id: user.id },
@@ -37,6 +43,9 @@ export class VerificationService {
       throw new BadRequestException('Email service is not configured.');
     }
 
-    await this.emailService.sendVerificationEmail(user.email, this.buildVerificationUrl(token));
+    await this.emailService.sendVerificationEmail(
+      user.email,
+      this.buildVerificationUrl(token),
+    );
   }
 }

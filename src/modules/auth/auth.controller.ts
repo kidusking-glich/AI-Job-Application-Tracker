@@ -53,14 +53,30 @@ export class AuthController {
 
   @UseGuards(JwtAuthGuard)
   @Post('2fa/enable')
-  enable2fa(@CurrentUser() user: User, @Body() dto: TwoFactorCodeDto, @Req() req: Request) {
-    return this.authService.enableTwoFactor(user, dto.code, requestContext(req));
+  enable2fa(
+    @CurrentUser() user: User,
+    @Body() dto: TwoFactorCodeDto,
+    @Req() req: Request,
+  ) {
+    return this.authService.enableTwoFactor(
+      user,
+      dto.code,
+      requestContext(req),
+    );
   }
 
   @UseGuards(JwtAuthGuard)
   @Post('2fa/disable')
-  disable2fa(@CurrentUser() user: User, @Body() dto: TwoFactorCodeDto, @Req() req: Request) {
-    return this.authService.disableTwoFactor(user, dto.code, requestContext(req));
+  disable2fa(
+    @CurrentUser() user: User,
+    @Body() dto: TwoFactorCodeDto,
+    @Req() req: Request,
+  ) {
+    return this.authService.disableTwoFactor(
+      user,
+      dto.code,
+      requestContext(req),
+    );
   }
 
   // Exchange an MFA ticket + TOTP code for a real session (public)
@@ -75,8 +91,14 @@ export class AuthController {
   }
 
   @Post('reset-password')
-  resetPassword(@Body() resetPasswordDto: ResetPasswordDto, @Req() req: Request) {
-    return this.authService.resetPassword(resetPasswordDto, requestContext(req));
+  resetPassword(
+    @Body() resetPasswordDto: ResetPasswordDto,
+    @Req() req: Request,
+  ) {
+    return this.authService.resetPassword(
+      resetPasswordDto,
+      requestContext(req),
+    );
   }
 
   @Post('resend-verification')

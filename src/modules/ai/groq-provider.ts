@@ -1,6 +1,14 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { AiProvider, ClauseAnalysisInput, ContractAnalysisResult, AnalyzedClause, AiError, AiErrorCode } from './ai-types';
+import Groq from 'groq-sdk';
+import {
+  AiProvider,
+  ClauseAnalysisInput,
+  ContractAnalysisResult,
+  AnalyzedClause,
+  AiError,
+  AiErrorCode,
+} from './ai-types';
 
 @Injectable()
 export class GroqAiProvider extends AiProvider {
@@ -10,13 +18,14 @@ export class GroqAiProvider extends AiProvider {
 
   constructor(private configService: ConfigService) {
     super();
-    this.model = this.configService.get<string>('GROQ_MODEL', 'llama-3.3-70b-versatile');
+    this.model = this.configService.get<string>(
+      'GROQ_MODEL',
+      'llama-3.3-70b-versatile',
+    );
   }
 
   private getClient(): any {
     if (!this.groqClient) {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const Groq = require('groq-sdk');
       this.groqClient = new Groq({
         apiKey: this.configService.get<string>('GROQ_API_KEY'),
       });
@@ -227,20 +236,26 @@ export class GroqAiProvider extends AiProvider {
 
     const normalizedClauses: AnalyzedClause[] = originalClauses.map(
       (original) => {
-        const aiClause = result.clauses.find(
-          (c: any) => c.clauseNumber === original.clauseNumber,
-        ) || {};
+        const aiClause =
+          result.clauses.find(
+            (c: any) => c.clauseNumber === original.clauseNumber,
+          ) || {};
 
         return {
           clauseNumber: original.clauseNumber,
-          title: original.title || aiClause.title || `Clause ${original.clauseNumber}`,
+          title:
+            original.title ||
+            aiClause.title ||
+            `Clause ${original.clauseNumber}`,
           content: original.content,
           sentiment: this.normalizeSentiment(aiClause.sentiment),
           riskLevel: this.normalizeRiskLevel(aiClause.riskLevel),
           explanation:
-            aiClause.explanation || 'No specific analysis provided for this clause.',
+            aiClause.explanation ||
+            'No specific analysis provided for this clause.',
           suggestion:
-            aiClause.suggestion || 'Review this clause carefully in the context of your agreement.',
+            aiClause.suggestion ||
+            'Review this clause carefully in the context of your agreement.',
           explanationAmharic:
             aiClause.explanationAmharic || aiClause.explanation || '',
           suggestionAmharic:
@@ -253,7 +268,9 @@ export class GroqAiProvider extends AiProvider {
     return {
       overallScore: Math.min(100, Math.max(0, result.overallScore || 50)),
       riskLevel: this.normalizeRiskLevel(result.riskLevel),
-      summary: result.summary || 'Analysis completed. Review the clause-by-clause breakdown below.',
+      summary:
+        result.summary ||
+        'Analysis completed. Review the clause-by-clause breakdown below.',
       summaryAmharic: result.summaryAmharic || result.summary || '',
       keyFindings: Array.isArray(result.keyFindings) ? result.keyFindings : [],
       keyFindingsAmharic: Array.isArray(result.keyFindingsAmharic)
@@ -261,7 +278,9 @@ export class GroqAiProvider extends AiProvider {
         : Array.isArray(result.keyFindings)
           ? result.keyFindings
           : [],
-      recommendations: Array.isArray(result.recommendations) ? result.recommendations : [],
+      recommendations: Array.isArray(result.recommendations)
+        ? result.recommendations
+        : [],
       recommendationsAmharic: Array.isArray(result.recommendationsAmharic)
         ? result.recommendationsAmharic
         : Array.isArray(result.recommendations)

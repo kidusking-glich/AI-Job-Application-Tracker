@@ -28,7 +28,10 @@ export class EmailService {
       'MAILERSEND_FROM_EMAIL',
       'no-reply@yourdomain.com',
     );
-    const fromName = this.configService.get<string>('MAILERSEND_FROM_NAME', 'Contract Reader');
+    const fromName = this.configService.get<string>(
+      'MAILERSEND_FROM_NAME',
+      'Contract Reader',
+    );
 
     const response = await fetch('https://api.mailersend.com/v1/email', {
       method: 'POST',
@@ -72,7 +75,10 @@ export class EmailService {
     });
   }
 
-  async sendVerificationEmail(to: string, verificationUrl: string): Promise<void> {
+  async sendVerificationEmail(
+    to: string,
+    verificationUrl: string,
+  ): Promise<void> {
     await this.sendEmail({
       to,
       subject: 'Verify your email — Contract Reader',

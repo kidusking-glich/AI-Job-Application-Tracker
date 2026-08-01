@@ -24,17 +24,23 @@ export class OcrService {
     }
 
     try {
-      this.logger.log(`Starting OCR on image: ${absolutePath} (lang: ${language})`);
+      this.logger.log(
+        `Starting OCR on image: ${absolutePath} (lang: ${language})`,
+      );
       const result = await this.runTesseract(absolutePath, language);
       this.logger.log(`OCR completed: ${result.length} characters extracted`);
       return result;
     } catch (error) {
       const message = error.message || String(error);
       // Check if it's a language model download error
-      if (message.includes('lang') || message.includes('traineddata') || message.includes('download')) {
+      if (
+        message.includes('lang') ||
+        message.includes('traineddata') ||
+        message.includes('download')
+      ) {
         this.logger.error(
           `OCR failed - language model could not be loaded for "${language}". ` +
-          `The first OCR call downloads the language model which may fail without internet. Error: ${message}`,
+            `The first OCR call downloads the language model which may fail without internet. Error: ${message}`,
         );
       } else {
         this.logger.error(`OCR failed for ${filePath}: ${message}`);
@@ -94,7 +100,9 @@ export class OcrService {
         });
         // Count generated images
         const files = fs.readdirSync(tempDir);
-        pageCount = files.filter((f) => f.startsWith('page-') || f.startsWith('page')).length;
+        pageCount = files.filter(
+          (f) => f.startsWith('page-') || f.startsWith('page'),
+        ).length;
       } catch {
         // Try ghostscript as fallback
         try {
@@ -105,8 +113,10 @@ export class OcrService {
           );
           const files = fs.readdirSync(tempDir);
           pageCount = files.filter((f) => f.endsWith('.png')).length;
-        } catch (gsError) {
-          this.logger.error(`PDF conversion failed: No tools available (pdftoppm, gs)`);
+        } catch {
+          this.logger.error(
+            `PDF conversion failed: No tools available (pdftoppm, gs)`,
+          );
           return null;
         }
       }
@@ -133,7 +143,9 @@ export class OcrService {
             allText += `\n\n--- Page ${pageFiles.indexOf(pageFile) + 1} ---\n\n${pageText}`;
           }
         } catch (pageError) {
-          this.logger.warn(`Failed to OCR page ${pageFile}: ${pageError.message}`);
+          this.logger.warn(
+            `Failed to OCR page ${pageFile}: ${pageError.message}`,
+          );
         }
       }
 

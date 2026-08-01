@@ -30,7 +30,11 @@ describe('JwtStrategy token versioning', () => {
     usersService.findOneById.mockResolvedValue(makeUser({ tokenVersion: 3 }));
 
     await expect(
-      strategy.validate({ sub: 'user-1', email: 'user@example.com', version: 3 }),
+      strategy.validate({
+        sub: 'user-1',
+        email: 'user@example.com',
+        version: 3,
+      }),
     ).resolves.toMatchObject({ id: 'user-1', tokenVersion: 3 });
   });
 
@@ -38,7 +42,11 @@ describe('JwtStrategy token versioning', () => {
     usersService.findOneById.mockResolvedValue(makeUser({ tokenVersion: 4 }));
 
     await expect(
-      strategy.validate({ sub: 'user-1', email: 'user@example.com', version: 3 }),
+      strategy.validate({
+        sub: 'user-1',
+        email: 'user@example.com',
+        version: 3,
+      }),
     ).rejects.toBeInstanceOf(UnauthorizedException);
   });
 
@@ -54,7 +62,11 @@ describe('JwtStrategy token versioning', () => {
     usersService.findOneById.mockResolvedValue(null);
 
     await expect(
-      strategy.validate({ sub: 'missing', email: 'missing@example.com', version: 0 }),
+      strategy.validate({
+        sub: 'missing',
+        email: 'missing@example.com',
+        version: 0,
+      }),
     ).rejects.toBeInstanceOf(UnauthorizedException);
   });
 });

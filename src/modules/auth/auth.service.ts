@@ -16,7 +16,6 @@ import { ResendVerificationDto } from './dto/resend-verification.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { Verify2faDto } from './dto/verify-2fa.dto';
-import { TwoFactorCodeDto } from './dto/two-factor-code.dto';
 import { EmailService } from '../email/email.service';
 import { SecurityLogService } from '../../core/security-log.service';
 import { RateLimiter } from '../../core/rate-limiter';
@@ -68,7 +67,9 @@ export class AuthService {
   async signup(signupDto: SignupDto) {
     const { email, password, name } = signupDto;
 
-    const existingUser = await this.prisma.user.findUnique({ where: { email } });
+    const existingUser = await this.prisma.user.findUnique({
+      where: { email },
+    });
     if (existingUser) {
       throw new ConflictException('Email already in use');
     }
@@ -103,13 +104,16 @@ export class AuthService {
         );
         return {
           user: result,
-          message: 'Account created. Please check your email to verify your account.',
+          message:
+            'Account created. Please check your email to verify your account.',
         };
       } catch (err) {
         this.logger.error(`Failed to send verification email: ${err.message}`);
       }
     } else {
-      this.logger.warn('MAILERSEND_API_KEY not set — verification email not sent');
+      this.logger.warn(
+        'MAILERSEND_API_KEY not set — verification email not sent',
+      );
     }
 
     // Dev convenience: only expose the verification link when email is NOT configured.
@@ -117,8 +121,10 @@ export class AuthService {
     if (!emailConfigured) {
       return {
         user: result,
-        message: 'Account created. Please verify your email to activate your account.',
-        devVerificationUrl: this.verificationService.buildVerificationUrl(verificationToken),
+        message:
+          'Account created. Please verify your email to activate your account.',
+        devVerificationUrl:
+          this.verificationService.buildVerificationUrl(verificationToken),
       };
     }
 
@@ -129,7 +135,10 @@ export class AuthService {
     };
   }
 
-  async login(loginDto: LoginDto, context?: { ip?: string; userAgent?: string }) {
+  async login(
+    loginDto: LoginDto,
+    context?: { ip?: string; userAgent?: string },
+  ) {
     const { email, password } = loginDto;
     const ip = context?.ip ?? 'unknown';
     const accountKey = this.loginKey(email, ip);
@@ -190,7 +199,12 @@ export class AuthService {
     // /auth/2fa/verify after proving the TOTP code.
     if (user.twoFactorEnabled && user.twoFactorSecret) {
       const mfaToken = this.jwtService.sign(
-        { sub: user.id, email: user.email, mfa: true, version: user.tokenVersion },
+        {
+          sub: user.id,
+          email: user.email,
+          mfa: true,
+          version: user.tokenVersion,
+        },
         { expiresIn: '5m' },
       );
       await this.securityLogService.log({
@@ -247,8 +261,13 @@ export class AuthService {
       throw new BadRequestException('Invalid or expired verification token');
     }
 
-    if (user.verificationTokenExpiresAt && user.verificationTokenExpiresAt < new Date()) {
-      throw new BadRequestException('Verification token has expired. Please request a new one.');
+    if (
+      user.verificationTokenExpiresAt &&
+      user.verificationTokenExpiresAt < new Date()
+    ) {
+      throw new BadRequestException(
+        'Verification token has expired. Please request a new one.',
+      );
     }
 
     const updated = await this.prisma.user.update({
@@ -281,7 +300,9 @@ export class AuthService {
       try {
         await this.verificationService.issueAndSendVerification(user);
       } catch (err) {
-        this.logger.error(`Failed to send verification email to ${user.email}: ${err.message}`);
+        this.logger.error(
+          `Failed to send verification email to ${user.email}: ${err.message}`,
+        );
       }
     }
 
@@ -310,11 +331,16 @@ export class AuthService {
         where: { id: user.id },
         data: {
           resetPasswordToken: tokenHash,
-          resetPasswordTokenExpiresAt: new Date(Date.now() + RESET_PASSWORD_TTL_MS),
+          resetPasswordTokenExpiresAt: new Date(
+            Date.now() + RESET_PASSWORD_TTL_MS,
+          ),
         },
       });
 
-      const frontendUrl = this.configService.get<string>('FRONTEND_URL', 'http://localhost:5173');
+      const frontendUrl = this.configService.get<string>(
+        'FRONTEND_URL',
+        'http://localhost:5173',
+      );
       const resetUrl = `${frontendUrl}/reset-password?token=${token}`;
 
       if (this.emailService.isConfigured) {
@@ -322,10 +348,14 @@ export class AuthService {
           await this.emailService.sendPasswordResetEmail(user.email, resetUrl);
         } catch (err) {
           // Send failures are logged but never surfaced so the response stays uniform
-          this.logger.error(`Failed to send password reset email to ${user.email}: ${err.message}`);
+          this.logger.error(
+            `Failed to send password reset email to ${user.email}: ${err.message}`,
+          );
         }
       } else {
-        this.logger.warn('MAILERSEND_API_KEY not set — password reset email not sent');
+        this.logger.warn(
+          'MAILERSEND_API_KEY not set — password reset email not sent',
+        );
       }
     }
 
@@ -336,7 +366,10 @@ export class AuthService {
   }
 
   /** Generate a new TOTP secret for the user (2FA not enabled until verified). */
-  async setupTwoFactor(user: User, context?: { ip?: string; userAgent?: string }) {
+  async setupTwoFactor(
+    user: User,
+    context?: { ip?: string; userAgent?: string },
+  ) {
     const secret = generateTotpSecret();
     await this.prisma.user.update({
       where: { id: user.id },
@@ -426,7 +459,9 @@ export class AuthService {
     try {
       payload = this.jwtService.verify(mfaToken);
     } catch {
-      throw new UnauthorizedException('Your two-factor session has expired. Please sign in again.');
+      throw new UnauthorizedException(
+        'Your two-factor session has expired. Please sign in again.',
+      );
     }
     if (!payload?.sub || payload.mfa !== true) {
       throw new UnauthorizedException('Invalid two-factor session.');
@@ -436,10 +471,14 @@ export class AuthService {
       where: { id: payload.sub, deletedAt: null },
     });
     if (!user || !user.twoFactorEnabled || !user.twoFactorSecret) {
-      throw new UnauthorizedException('Two-factor authentication is not enabled.');
+      throw new UnauthorizedException(
+        'Two-factor authentication is not enabled.',
+      );
     }
     if (user.tokenVersion !== payload.version) {
-      throw new UnauthorizedException('Session invalidated. Please sign in again.');
+      throw new UnauthorizedException(
+        'Session invalidated. Please sign in again.',
+      );
     }
 
     this.totpLimiter.check(user.id);
@@ -487,7 +526,9 @@ export class AuthService {
       throw new BadRequestException('Invalid or expired reset token');
     }
     if (user.resetPasswordTokenExpiresAt < new Date()) {
-      throw new BadRequestException('Reset token has expired. Please request a new one.');
+      throw new BadRequestException(
+        'Reset token has expired. Please request a new one.',
+      );
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -527,7 +568,11 @@ export class AuthService {
   }
 
   private generateToken(user: User): string {
-    const payload = { sub: user.id, email: user.email, version: user.tokenVersion };
+    const payload = {
+      sub: user.id,
+      email: user.email,
+      version: user.tokenVersion,
+    };
     return this.jwtService.sign(payload);
   }
 }

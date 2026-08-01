@@ -1,4 +1,15 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards, Req } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Delete,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+  Req,
+} from '@nestjs/common';
 import { Request } from 'express';
 import { AdminService } from './admin.service';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -61,16 +72,32 @@ export class AdminController {
     @Body() createAdminUserDto: CreateAdminUserDto,
     @Req() req: Request,
   ) {
-    return this.adminService.createAdminUser(requester.id, createAdminUserDto, requestContext(req));
+    return this.adminService.createAdminUser(
+      requester.id,
+      createAdminUserDto,
+      requestContext(req),
+    );
   }
 
   @Post('users/:id/transfer-super-admin')
-  transferSuperAdmin(@CurrentUser() requester: User, @Param('id') id: string, @Req() req: Request) {
-    return this.adminService.transferSuperAdmin(requester.id, id, requestContext(req));
+  transferSuperAdmin(
+    @CurrentUser() requester: User,
+    @Param('id') id: string,
+    @Req() req: Request,
+  ) {
+    return this.adminService.transferSuperAdmin(
+      requester.id,
+      id,
+      requestContext(req),
+    );
   }
 
   @Delete('users/:id')
-  deleteUser(@CurrentUser() requester: User, @Param('id') id: string, @Req() req: Request) {
+  deleteUser(
+    @CurrentUser() requester: User,
+    @Param('id') id: string,
+    @Req() req: Request,
+  ) {
     return this.adminService.deleteUser(requester.id, id, requestContext(req));
   }
 
@@ -81,7 +108,12 @@ export class AdminController {
     @Body() updateRoleDto: UpdateRoleDto,
     @Req() req: Request,
   ) {
-    return this.adminService.updateUserRole(requester.id, id, updateRoleDto.isAdmin, requestContext(req));
+    return this.adminService.updateUserRole(
+      requester.id,
+      id,
+      updateRoleDto.isAdmin,
+      requestContext(req),
+    );
   }
 
   @Post('users/:id/resend-verification')

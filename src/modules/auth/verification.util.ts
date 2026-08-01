@@ -10,6 +10,9 @@ export function hashToken(token: string): string {
   return createHash('sha256').update(token).digest('hex');
 }
 
-export function buildVerificationUrl(frontendUrl: string, token: string): string {
+export function buildVerificationUrl(
+  frontendUrl: string,
+  token: string,
+): string {
   return `${frontendUrl}/verify-email?token=${token}`;
 }

@@ -34,7 +34,9 @@ export class SecurityLogService {
         },
       });
     } catch (err) {
-      this.logger.error(`Failed to write security log (${data.action}): ${err.message}`);
+      this.logger.error(
+        `Failed to write security log (${data.action}): ${err.message}`,
+      );
     }
   }
 }

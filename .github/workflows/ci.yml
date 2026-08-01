@@ -47,6 +47,12 @@ jobs:
       - name: Apply migrations
         run: npx prisma migrate deploy
 
+      - name: Lint
+        run: npm run lint
+
+      - name: Format check
+        run: npm run format:check
+
       - name: Build
         run: npm run build
 

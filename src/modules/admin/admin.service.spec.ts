@@ -14,7 +14,13 @@ describe('AdminService super-admin features', () => {
       },
       $transaction: jest.fn(),
     };
-    service = new AdminService(prisma, {} as any, {} as any, {} as any, { log: jest.fn() } as any);
+    service = new AdminService(
+      prisma,
+      {} as any,
+      {} as any,
+      {} as any,
+      { log: jest.fn() } as any,
+    );
   });
 
   describe('getSuperAdminStatus', () => {
@@ -61,9 +67,9 @@ describe('AdminService super-admin features', () => {
     it('rejects a missing target user', async () => {
       prisma.user.findUnique.mockResolvedValue(null);
 
-      await expect(service.transferSuperAdmin('a', 'missing')).rejects.toBeInstanceOf(
-        NotFoundException,
-      );
+      await expect(
+        service.transferSuperAdmin('a', 'missing'),
+      ).rejects.toBeInstanceOf(NotFoundException);
     });
 
     it('rejects transferring to someone who is already the super admin', async () => {
@@ -113,7 +119,11 @@ describe('AdminService super-admin features', () => {
       // previously issued JWTs are rejected immediately.
       expect(prisma.user.update).toHaveBeenCalledWith({
         where: { id: 'a' },
-        data: { isSuperAdmin: false, isAdmin: true, tokenVersion: { increment: 1 } },
+        data: {
+          isSuperAdmin: false,
+          isAdmin: true,
+          tokenVersion: { increment: 1 },
+        },
       });
       expect(result.message).toContain('b@example.com');
     });

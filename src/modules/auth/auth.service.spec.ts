@@ -1,5 +1,9 @@
 import { AuthService } from './auth.service';
-import { BadRequestException, HttpStatus, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  HttpStatus,
+  UnauthorizedException,
+} from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 
 // bcrypt's exports are read-only under CommonJS interop, so jest.spyOn fails.
@@ -15,7 +19,7 @@ jest.mock('bcrypt', () => ({
 jest.mock('otplib', () => ({
   generateSecret: jest.fn(() => 'FAKESECRET'),
   generateURI: jest.fn(() => 'otpauth://totp/test@example.com'),
-  verify: jest.fn(async () => ({ valid: true })),
+  verify: jest.fn(() => ({ valid: true })),
   ScureBase32Plugin: class {},
   NobleCryptoPlugin: class {},
 }));
@@ -34,7 +38,14 @@ describe('AuthService resetPassword token invalidation', () => {
         update: jest.fn(),
       },
     };
-    service = new AuthService(prisma, {} as any, {} as any, {} as any, {} as any, { log: jest.fn() } as any);
+    service = new AuthService(
+      prisma,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      { log: jest.fn() } as any,
+    );
     mockedHash.mockReset();
     mockedHash.mockResolvedValue('hashed-new-password');
   });
@@ -67,7 +78,10 @@ describe('AuthService resetPassword token invalidation', () => {
     });
     prisma.user.update.mockResolvedValue({ id: 'user-1' });
 
-    const result = await service.resetPassword({ token: 'valid-token', password: 'newpass123' });
+    const result = await service.resetPassword({
+      token: 'valid-token',
+      password: 'newpass123',
+    });
 
     expect(mockedHash).toHaveBeenCalledWith('newpass123', 10);
     expect(prisma.user.update).toHaveBeenCalledWith({
@@ -105,16 +119,23 @@ describe('AuthService login security events', () => {
     };
     jwtService = { sign: jest.fn(() => 'mocked-token') };
     securityLog = { log: jest.fn() };
-    service = new AuthService(prisma, jwtService, {} as any, {} as any, {} as any, securityLog);
+    service = new AuthService(
+      prisma,
+      jwtService,
+      {} as any,
+      {} as any,
+      {} as any,
+      securityLog,
+    );
     mockedCompare.mockReset();
   });
 
   it('logs LOGIN_FAILED with reason invalid_credentials when the user does not exist', async () => {
     prisma.user.findUnique.mockResolvedValue(null);
 
-    await expect(service.login({ email: 'nobody@example.com', password: 'x' })).rejects.toBeInstanceOf(
-      UnauthorizedException,
-    );
+    await expect(
+      service.login({ email: 'nobody@example.com', password: 'x' }),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
     expect(securityLog.log).toHaveBeenCalledWith(
       expect.objectContaining({
         action: 'LOGIN_FAILED',
@@ -127,31 +148,52 @@ describe('AuthService login security events', () => {
     prisma.user.findUnique.mockResolvedValue(baseUser);
     mockedCompare.mockResolvedValue(false);
 
-    await expect(service.login({ email: baseUser.email, password: 'wrong' })).rejects.toBeInstanceOf(
-      UnauthorizedException,
-    );
+    await expect(
+      service.login({ email: baseUser.email, password: 'wrong' }),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
     expect(securityLog.log).toHaveBeenCalledWith(
-      expect.objectContaining({ action: 'LOGIN_FAILED', metadata: { reason: 'invalid_password' } }),
+      expect.objectContaining({
+        action: 'LOGIN_FAILED',
+        metadata: { reason: 'invalid_password' },
+      }),
     );
   });
 
   it('logs LOGIN_MFA_REQUIRED when 2FA gates the login and returns a ticket', async () => {
-    prisma.user.findUnique.mockResolvedValue({ ...baseUser, twoFactorEnabled: true, twoFactorSecret: 'SECRET' });
+    prisma.user.findUnique.mockResolvedValue({
+      ...baseUser,
+      twoFactorEnabled: true,
+      twoFactorSecret: 'SECRET',
+    });
     mockedCompare.mockResolvedValue(true);
 
-    const result = await service.login({ email: baseUser.email, password: 'right' });
-    expect(result).toEqual({ requiresTwoFactor: true, mfaToken: 'mocked-token' });
+    const result = await service.login({
+      email: baseUser.email,
+      password: 'right',
+    });
+    expect(result).toEqual({
+      requiresTwoFactor: true,
+      mfaToken: 'mocked-token',
+    });
     expect(securityLog.log).toHaveBeenCalledWith(
-      expect.objectContaining({ action: 'LOGIN_MFA_REQUIRED', userId: baseUser.id }),
+      expect.objectContaining({
+        action: 'LOGIN_MFA_REQUIRED',
+        userId: baseUser.id,
+      }),
     );
-    expect(securityLog.log).not.toHaveBeenCalledWith(expect.objectContaining({ action: 'LOGIN_SUCCESS' }));
+    expect(securityLog.log).not.toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'LOGIN_SUCCESS' }),
+    );
   });
 
   it('logs LOGIN_SUCCESS on a successful non-2FA login', async () => {
     prisma.user.findUnique.mockResolvedValue(baseUser);
     mockedCompare.mockResolvedValue(true);
 
-    const result = await service.login({ email: baseUser.email, password: 'right' });
+    const result = await service.login({
+      email: baseUser.email,
+      password: 'right',
+    });
     expect(result.access_token).toBe('mocked-token');
     expect(securityLog.log).toHaveBeenCalledWith(
       expect.objectContaining({ action: 'LOGIN_SUCCESS', userId: baseUser.id }),
@@ -181,11 +223,20 @@ describe('AuthService login rate limiting', () => {
     };
     jwtService = { sign: jest.fn(() => 'mocked-token') };
     securityLog = { log: jest.fn() };
-    service = new AuthService(prisma, jwtService, {} as any, {} as any, {} as any, securityLog);
+    service = new AuthService(
+      prisma,
+      jwtService,
+      {} as any,
+      {} as any,
+      {} as any,
+      securityLog,
+    );
     mockedCompare.mockReset();
   });
 
-  async function expectTooManyRequests(promise: Promise<unknown>): Promise<void> {
+  async function expectTooManyRequests(
+    promise: Promise<unknown>,
+  ): Promise<void> {
     await expect(promise).rejects.toMatchObject({
       status: HttpStatus.TOO_MANY_REQUESTS,
     });
@@ -197,12 +248,18 @@ describe('AuthService login rate limiting', () => {
 
     for (let i = 0; i < 5; i++) {
       await expect(
-        service.login({ email: baseUser.email, password: 'wrong' }, { ip: '1.2.3.4' }),
+        service.login(
+          { email: baseUser.email, password: 'wrong' },
+          { ip: '1.2.3.4' },
+        ),
       ).rejects.toBeInstanceOf(UnauthorizedException);
     }
 
     await expectTooManyRequests(
-      service.login({ email: baseUser.email, password: 'wrong' }, { ip: '1.2.3.4' }),
+      service.login(
+        { email: baseUser.email, password: 'wrong' },
+        { ip: '1.2.3.4' },
+      ),
     );
   });
 
@@ -212,7 +269,10 @@ describe('AuthService login rate limiting', () => {
 
     for (let i = 0; i < 6; i++) {
       try {
-        await service.login({ email: baseUser.email, password: 'wrong' }, { ip: '5.6.7.8' });
+        await service.login(
+          { email: baseUser.email, password: 'wrong' },
+          { ip: '5.6.7.8' },
+        );
       } catch {
         // expected
       }
@@ -228,19 +288,28 @@ describe('AuthService login rate limiting', () => {
     mockedCompare.mockResolvedValue(false);
     for (let i = 0; i < 3; i++) {
       await expect(
-        service.login({ email: baseUser.email, password: 'wrong' }, { ip: '9.9.9.9' }),
+        service.login(
+          { email: baseUser.email, password: 'wrong' },
+          { ip: '9.9.9.9' },
+        ),
       ).rejects.toBeInstanceOf(UnauthorizedException);
     }
 
     // A successful login clears the counter for that account+IP.
     mockedCompare.mockResolvedValue(true);
-    const result = await service.login({ email: baseUser.email, password: 'right' }, { ip: '9.9.9.9' });
+    const result = await service.login(
+      { email: baseUser.email, password: 'right' },
+      { ip: '9.9.9.9' },
+    );
     expect(result.access_token).toBe('mocked-token');
 
     // Failing again starts from a clean slate — Unauthorized, not 429.
     mockedCompare.mockResolvedValue(false);
     await expect(
-      service.login({ email: baseUser.email, password: 'wrong' }, { ip: '9.9.9.9' }),
+      service.login(
+        { email: baseUser.email, password: 'wrong' },
+        { ip: '9.9.9.9' },
+      ),
     ).rejects.toBeInstanceOf(UnauthorizedException);
   });
 
@@ -249,12 +318,18 @@ describe('AuthService login rate limiting', () => {
 
     for (let i = 0; i < 20; i++) {
       await expect(
-        service.login({ email: `user${i}@example.com`, password: 'x' }, { ip: '3.3.3.3' }),
+        service.login(
+          { email: `user${i}@example.com`, password: 'x' },
+          { ip: '3.3.3.3' },
+        ),
       ).rejects.toBeInstanceOf(UnauthorizedException);
     }
 
     await expectTooManyRequests(
-      service.login({ email: 'target@example.com', password: 'x' }, { ip: '3.3.3.3' }),
+      service.login(
+        { email: 'target@example.com', password: 'x' },
+        { ip: '3.3.3.3' },
+      ),
     );
   });
 });

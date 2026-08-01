@@ -1,4 +1,10 @@
-import { Injectable, NotFoundException, BadRequestException, ConflictException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  ConflictException,
+  Logger,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../core/prisma.service';
 import { RequestLogCleanupService } from '../../core/request-log-cleanup.service';
@@ -21,21 +27,38 @@ export class AdminService {
 
   async getStats() {
     const now = new Date();
-    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startOfToday = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+    );
     const startOfWeek = new Date(startOfToday);
     startOfWeek.setDate(startOfWeek.getDate() - 6);
     startOfWeek.setHours(0, 0, 0, 0);
 
-    const [totalUsers, verifiedUsers, totalContracts, totalAnalyses, totalRequests, requestsToday, requestsThisWeek] =
-      await Promise.all([
-        this.prisma.user.count({ where: { deletedAt: null } }),
-        this.prisma.user.count({ where: { emailVerifiedAt: { not: null }, deletedAt: null } }),
-        this.prisma.contract.count({ where: { deletedAt: null } }),
-        this.prisma.analysis.count(),
-        this.prisma.requestLog.count(),
-        this.prisma.requestLog.count({ where: { createdAt: { gte: startOfToday } } }),
-        this.prisma.requestLog.count({ where: { createdAt: { gte: startOfWeek } } }),
-      ]);
+    const [
+      totalUsers,
+      verifiedUsers,
+      totalContracts,
+      totalAnalyses,
+      totalRequests,
+      requestsToday,
+      requestsThisWeek,
+    ] = await Promise.all([
+      this.prisma.user.count({ where: { deletedAt: null } }),
+      this.prisma.user.count({
+        where: { emailVerifiedAt: { not: null }, deletedAt: null },
+      }),
+      this.prisma.contract.count({ where: { deletedAt: null } }),
+      this.prisma.analysis.count(),
+      this.prisma.requestLog.count(),
+      this.prisma.requestLog.count({
+        where: { createdAt: { gte: startOfToday } },
+      }),
+      this.prisma.requestLog.count({
+        where: { createdAt: { gte: startOfWeek } },
+      }),
+    ]);
 
     // Requests per day for the last 7 days + top endpoints (single query)
     const weekLogs = await this.prisma.requestLog.findMany({
@@ -47,18 +70,27 @@ export class AdminService {
       const day = new Date(startOfWeek);
       day.setDate(startOfWeek.getDate() + i);
       const key = day.toISOString().slice(0, 10);
-      const count = weekLogs.filter((l) => l.createdAt.toISOString().slice(0, 10) === key).length;
+      const count = weekLogs.filter(
+        (l) => l.createdAt.toISOString().slice(0, 10) === key,
+      ).length;
       return { date: key, count };
     });
 
-    const endpointCounts = new Map<string, { method: string; path: string; count: number }>();
+    const endpointCounts = new Map<
+      string,
+      { method: string; path: string; count: number }
+    >();
     for (const log of weekLogs) {
       const key = `${log.method} ${log.path}`;
       const existing = endpointCounts.get(key);
       if (existing) {
         existing.count += 1;
       } else {
-        endpointCounts.set(key, { method: log.method, path: log.path, count: 1 });
+        endpointCounts.set(key, {
+          method: log.method,
+          path: log.path,
+          count: 1,
+        });
       }
     }
     const topEndpoints = [...endpointCounts.values()]
@@ -274,7 +306,9 @@ export class AdminService {
 
     // Never delete the super admin account.
     if (user.isSuperAdmin) {
-      throw new BadRequestException('The super admin account cannot be deleted.');
+      throw new BadRequestException(
+        'The super admin account cannot be deleted.',
+      );
     }
 
     // Never delete the last remaining admin.
@@ -402,8 +436,14 @@ export class AdminService {
     }
     const dbLatencyMs = Date.now() - dbStartedAt;
 
-    const retentionDays = this.configService.get<number>('REQUEST_LOG_RETENTION_DAYS', 30);
-    const intervalHours = this.configService.get<number>('REQUEST_LOG_CLEANUP_INTERVAL_HOURS', 24);
+    const retentionDays = this.configService.get<number>(
+      'REQUEST_LOG_RETENTION_DAYS',
+      30,
+    );
+    const intervalHours = this.configService.get<number>(
+      'REQUEST_LOG_CLEANUP_INTERVAL_HOURS',
+      24,
+    );
 
     return {
       db: {

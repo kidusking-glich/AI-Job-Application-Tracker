@@ -9,7 +9,7 @@ import { PrismaService } from '../../core/prisma.service';
 import { AiService, ClauseAnalysisInput } from '../ai/ai.service';
 import { AiError, AiErrorCode } from '../ai/ai-types';
 import { TextExtractionService } from '../contracts/text-extraction.service';
-import { AnalysisStatus, Contract, ContractLanguage } from '@prisma/client';
+import { Contract } from '@prisma/client';
 
 @Injectable()
 export class AnalysisService {
@@ -51,7 +51,6 @@ export class AnalysisService {
     }> = [];
 
     // Try to extract using regex patterns
-    let match: RegExpExecArray | null;
     for (const pattern of patterns) {
       const matches = [...content.matchAll(pattern)];
       if (matches.length >= 2) {
@@ -67,7 +66,9 @@ export class AnalysisService {
     // Fallback: split by double newlines or numbered lists
     if (clauses.length === 0) {
       for (const separator of clauseSeparators) {
-        const parts = content.split(separator).filter((p) => p.trim().length > 50);
+        const parts = content
+          .split(separator)
+          .filter((p) => p.trim().length > 50);
         if (parts.length >= 2) {
           clauses = parts.map((part, i) => ({
             clauseNumber: i + 1,
@@ -82,7 +83,9 @@ export class AnalysisService {
     // Last resort: just split into chunks
     if (clauses.length === 0) {
       const words = content.split(/\s+/);
-      const chunkSize = Math.ceil(words.length / Math.max(Math.ceil(words.length / 200), 3));
+      const chunkSize = Math.ceil(
+        words.length / Math.max(Math.ceil(words.length / 200), 3),
+      );
       for (let i = 0; i < words.length; i += chunkSize) {
         const chunk = words.slice(i, i + chunkSize).join(' ');
         if (chunk.trim().length > 50) {
@@ -98,10 +101,7 @@ export class AnalysisService {
     return clauses;
   }
 
-  async analyze(
-    userId: string,
-    contractId: string,
-  ) {
+  async analyze(userId: string, contractId: string) {
     // Verify contract exists and belongs to user
     const contract = await this.prisma.contract.findUnique({
       where: { id: contractId, deletedAt: null },
@@ -118,7 +118,9 @@ export class AnalysisService {
     // Get the text content - from pasted text, or auto-extract from uploaded file
     let content = contract.content;
     if (!content && contract.fileUrl) {
-      this.logger.log(`Extracting text from file for analysis: ${contract.fileUrl}`);
+      this.logger.log(
+        `Extracting text from file for analysis: ${contract.fileUrl}`,
+      );
       const extracted = await this.textExtraction.extractText(
         contract.fileUrl,
         undefined,
@@ -193,13 +195,11 @@ export class AnalysisService {
       }
 
       // Prepare input for AI
-      const clauseInputs: ClauseAnalysisInput[] = extractedClauses.map(
-        (c) => ({
-          clauseNumber: c.clauseNumber,
-          title: c.title,
-          content: c.content,
-        }),
-      );
+      const clauseInputs: ClauseAnalysisInput[] = extractedClauses.map((c) => ({
+        clauseNumber: c.clauseNumber,
+        title: c.title,
+        content: c.content,
+      }));
 
       // Run AI analysis
       const result = await this.aiService.analyzeContract(

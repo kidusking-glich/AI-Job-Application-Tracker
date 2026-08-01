@@ -1,4 +1,9 @@
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleDestroy,
+  OnModuleInit,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from './prisma.service';
 
@@ -30,9 +35,14 @@ export class RequestLogCleanupService implements OnModuleInit, OnModuleDestroy {
 
   onModuleInit() {
     // Run once at startup, then on the configured interval.
-    this.runCleanup();
-    const intervalHours = this.configService.get<number>('REQUEST_LOG_CLEANUP_INTERVAL_HOURS', DEFAULT_INTERVAL_HOURS);
-    this.timer = setInterval(() => this.runCleanup(), intervalHours * HOUR_MS);
+    void this.runCleanup();
+    const intervalHours = this.configService.get<number>(
+      'REQUEST_LOG_CLEANUP_INTERVAL_HOURS',
+      DEFAULT_INTERVAL_HOURS,
+    );
+    this.timer = setInterval(() => {
+      void this.runCleanup();
+    }, intervalHours * HOUR_MS);
     // Don't keep the process alive just for the cleanup timer.
     this.timer.unref();
   }
@@ -46,7 +56,10 @@ export class RequestLogCleanupService implements OnModuleInit, OnModuleDestroy {
 
   async runCleanup(): Promise<number> {
     try {
-      const retentionDays = this.configService.get<number>('REQUEST_LOG_RETENTION_DAYS', DEFAULT_RETENTION_DAYS);
+      const retentionDays = this.configService.get<number>(
+        'REQUEST_LOG_RETENTION_DAYS',
+        DEFAULT_RETENTION_DAYS,
+      );
       const cutoff = new Date(Date.now() - retentionDays * 24 * HOUR_MS);
 
       const { count } = await this.prisma.requestLog.deleteMany({
@@ -58,7 +71,9 @@ export class RequestLogCleanupService implements OnModuleInit, OnModuleDestroy {
       this.lastRunSucceeded = true;
 
       if (count > 0) {
-        this.logger.log(`Deleted ${count} request log(s) older than ${retentionDays} days`);
+        this.logger.log(
+          `Deleted ${count} request log(s) older than ${retentionDays} days`,
+        );
       }
       return count;
     } catch (err) {

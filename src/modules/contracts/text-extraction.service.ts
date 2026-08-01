@@ -41,12 +41,12 @@ export class TextExtractionService {
         case '.doc':
           return await this.extractFromDoc(absolutePath);
         case '.txt':
-          return await this.extractFromTxt(absolutePath);
+          return this.extractFromTxt(absolutePath);
         case '.png':
         case '.jpg':
         case '.jpeg':
           return await this.extractFromImage(absolutePath, language);
-        default:
+        default: {
           // For unknown types, try OCR first, then plain text
           const ocrResult = await this.ocrService.recognizeImage(
             absolutePath,
@@ -56,14 +56,17 @@ export class TextExtractionService {
             return ocrResult;
           }
           try {
-            return await this.extractFromTxt(absolutePath);
+            return this.extractFromTxt(absolutePath);
           } catch {
             this.logger.warn(`Unsupported file type for extraction: ${ext}`);
             return null;
           }
+        }
       }
     } catch (error) {
-      this.logger.error(`Text extraction failed for ${filePath}: ${error.message}`);
+      this.logger.error(
+        `Text extraction failed for ${filePath}: ${error.message}`,
+      );
       return null;
     }
   }
@@ -117,9 +120,9 @@ export class TextExtractionService {
    */
   private async tryPdfParse(filePath: string): Promise<string | null> {
     try {
-      const pdfParse: (
+      const pdfParse = (await import('pdf-parse')) as unknown as (
         dataBuffer: Buffer,
-      ) => Promise<{ text: string; numpages: number }> = require('pdf-parse');
+      ) => Promise<{ text: string; numpages: number }>;
       const dataBuffer = fs.readFileSync(filePath);
       const data = await pdfParse(dataBuffer);
       return (data.text || '').trim() || null;
@@ -158,7 +161,7 @@ export class TextExtractionService {
       // If mammoth fails, try OCR
       const ocrResult = await this.ocrService.recognizeImage(filePath);
       if (ocrResult) return ocrResult;
-      return await this.extractFromTxt(filePath);
+      return this.extractFromTxt(filePath);
     }
   }
 
@@ -187,7 +190,7 @@ export class TextExtractionService {
   /**
    * Extract text from a plain text file.
    */
-  private async extractFromTxt(filePath: string): Promise<string> {
+  private extractFromTxt(filePath: string): string {
     const text = fs.readFileSync(filePath, 'utf-8');
     this.logger.log(`TXT extracted: ${text.length} characters`);
     return text;

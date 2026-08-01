@@ -91,10 +91,7 @@ export class ContractsController {
   }
 
   @Get()
-  findAll(
-    @CurrentUser() user: User,
-    @Query() queryDto: QueryContractDto,
-  ) {
+  findAll(@CurrentUser() user: User, @Query() queryDto: QueryContractDto) {
     return this.contractsService.findAll(user.id, queryDto);
   }
 

@@ -39,10 +39,7 @@ export class ContractsService {
     }
   }
 
-  async create(
-    userId: string,
-    dto: CreateContractDto,
-  ): Promise<Contract> {
+  async create(userId: string, dto: CreateContractDto): Promise<Contract> {
     const contract = await this.prisma.contract.create({
       data: {
         title: dto.title,
@@ -73,7 +70,12 @@ export class ContractsService {
     });
 
     // Attempt to extract text from the uploaded file (async, non-blocking)
-    this.extractAndUpdateContent(contract.id, file.path, file.originalname, language);
+    this.extractAndUpdateContent(
+      contract.id,
+      file.path,
+      file.originalname,
+      language,
+    );
 
     this.logger.log(
       `Contract created from file: ${contract.id} - "${contract.title}"`,

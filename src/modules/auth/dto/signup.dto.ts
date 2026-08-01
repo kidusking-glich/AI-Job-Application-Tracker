@@ -1,4 +1,3 @@
-
 import { IsEmail, IsString, IsOptional, MinLength } from 'class-validator';
 
 export class SignupDto {

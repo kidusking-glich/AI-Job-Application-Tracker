@@ -25,7 +25,9 @@ export class RequestLoggerMiddleware implements NestMiddleware {
             userAgent: req.headers['user-agent'] ?? null,
           },
         })
-        .catch((err) => this.logger.error(`Failed to log request: ${err.message}`));
+        .catch((err) =>
+          this.logger.error(`Failed to log request: ${err.message}`),
+        );
     });
 
     next();
@@ -36,7 +38,9 @@ export class RequestLoggerMiddleware implements NestMiddleware {
     try {
       const payloadPart = authorization.slice(7).split('.')[1];
       if (!payloadPart) return null;
-      const payload = JSON.parse(Buffer.from(payloadPart, 'base64url').toString('utf8'));
+      const payload = JSON.parse(
+        Buffer.from(payloadPart, 'base64url').toString('utf8'),
+      );
       return typeof payload?.sub === 'string' ? payload.sub : null;
     } catch {
       return null;

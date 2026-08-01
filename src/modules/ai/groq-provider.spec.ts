@@ -20,7 +20,8 @@ describe('GroqAiProvider', () => {
     {
       clauseNumber: 2,
       title: 'Non-Compete',
-      content: 'Employee shall not compete with the company for a period of time.',
+      content:
+        'Employee shall not compete with the company for a period of time.',
     },
   ];
 
@@ -40,7 +41,10 @@ describe('GroqAiProvider', () => {
     });
   }
 
-  function mockRejection(status: number | undefined, errorBody?: { message?: string }) {
+  function mockRejection(
+    status: number | undefined,
+    errorBody?: { message?: string },
+  ) {
     const err: any = new Error(errorBody?.message || 'API error');
     if (status !== undefined) err.status = status;
     err.error = errorBody;
@@ -49,7 +53,9 @@ describe('GroqAiProvider', () => {
 
   describe('error classification (classifyError)', () => {
     it('maps a 429 quota error to AI_QUOTA_EXCEEDED', async () => {
-      mockRejection(429, { message: 'rate_limit_exceeded: You exceeded your current quota' });
+      mockRejection(429, {
+        message: 'rate_limit_exceeded: You exceeded your current quota',
+      });
 
       const error = await provider
         .analyzeContract('Test', 'content', clauses, 'ENGLISH')
@@ -135,7 +141,12 @@ describe('GroqAiProvider', () => {
         }),
       );
 
-      const result = await provider.analyzeContract('Test', 'content', clauses, 'ENGLISH');
+      const result = await provider.analyzeContract(
+        'Test',
+        'content',
+        clauses,
+        'ENGLISH',
+      );
 
       expect(result.summaryAmharic).toBe('የአማርኛ ማጠቃለያ');
       expect(result.keyFindingsAmharic).toEqual(['የአማርኛ ግኝት']);
@@ -165,7 +176,12 @@ describe('GroqAiProvider', () => {
         }),
       );
 
-      const result = await provider.analyzeContract('Test', 'content', clauses, 'ENGLISH');
+      const result = await provider.analyzeContract(
+        'Test',
+        'content',
+        clauses,
+        'ENGLISH',
+      );
 
       expect(result.summaryAmharic).toBe('English summary');
       expect(result.keyFindingsAmharic).toEqual(['English finding']);
@@ -188,7 +204,8 @@ describe('GroqAiProvider', () => {
 
       await provider.analyzeContract('ውል', 'content', clauses, 'AMHARIC');
 
-      const userPrompt = mockCreate.mock.calls[0][0].messages[1].content as string;
+      const userPrompt = mockCreate.mock.calls[0][0].messages[1]
+        .content as string;
       expect(userPrompt).toContain('ክፍል 1');
       expect(userPrompt).toContain('አማርኛ');
     });
@@ -207,7 +224,8 @@ describe('GroqAiProvider', () => {
 
       await provider.analyzeContract('Contract', 'content', clauses, 'ENGLISH');
 
-      const userPrompt = mockCreate.mock.calls[0][0].messages[1].content as string;
+      const userPrompt = mockCreate.mock.calls[0][0].messages[1]
+        .content as string;
       expect(userPrompt).toContain('Clause 1');
       expect(userPrompt).toContain('English');
       expect(userPrompt).not.toContain('ክፍል');
@@ -244,14 +262,23 @@ describe('GroqAiProvider', () => {
         }),
       );
 
-      const result = await provider.analyzeContract('Test', 'content', clauses, 'ENGLISH');
+      const result = await provider.analyzeContract(
+        'Test',
+        'content',
+        clauses,
+        'ENGLISH',
+      );
 
       // Clause 1 keeps its Amharic translation
       expect(result.clauses[0].explanationAmharic).toBe('የአማርኛ ማብራሪያ አንድ');
       expect(result.clauses[0].suggestionAmharic).toBe('የአማርኛ ሀሳብ አንድ');
       // Clause 2 falls back to English
-      expect(result.clauses[1].explanationAmharic).toBe('English explanation two');
-      expect(result.clauses[1].suggestionAmharic).toBe('English suggestion two');
+      expect(result.clauses[1].explanationAmharic).toBe(
+        'English explanation two',
+      );
+      expect(result.clauses[1].suggestionAmharic).toBe(
+        'English suggestion two',
+      );
     });
   });
 
@@ -275,7 +302,12 @@ describe('GroqAiProvider', () => {
         }),
       );
 
-      const result = await provider.analyzeContract('Test', 'content', clauses, 'ENGLISH');
+      const result = await provider.analyzeContract(
+        'Test',
+        'content',
+        clauses,
+        'ENGLISH',
+      );
 
       expect(result.overallScore).toBe(100);
       expect(result.riskLevel).toBe('LOW');
@@ -296,7 +328,12 @@ describe('GroqAiProvider', () => {
         }),
       );
 
-      const result = await provider.analyzeContract('Test', 'content', clauses, 'ENGLISH');
+      const result = await provider.analyzeContract(
+        'Test',
+        'content',
+        clauses,
+        'ENGLISH',
+      );
 
       expect(result.clauses).toHaveLength(2);
       expect(result.clauses[0].explanation).toBe(
@@ -327,7 +364,12 @@ describe('GroqAiProvider', () => {
         }),
       );
 
-      const result = await provider.analyzeContract('Test', 'content', clauses, 'ENGLISH');
+      const result = await provider.analyzeContract(
+        'Test',
+        'content',
+        clauses,
+        'ENGLISH',
+      );
 
       expect(result.overallScore).toBe(0);
       expect(result.clauses[0].severity).toBe(1);

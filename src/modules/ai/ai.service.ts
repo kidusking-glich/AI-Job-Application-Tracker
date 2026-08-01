@@ -1,7 +1,12 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { GroqAiProvider } from './groq-provider';
-import { AiProvider, ClauseAnalysisInput, ContractAnalysisResult, AnalyzedClause } from './ai-types';
+import {
+  AiProvider,
+  ClauseAnalysisInput,
+  ContractAnalysisResult,
+  AnalyzedClause,
+} from './ai-types';
 
 export type { ClauseAnalysisInput, ContractAnalysisResult, AnalyzedClause };
 export { AiProvider };
@@ -80,8 +85,7 @@ export class MockAiProvider extends AiProvider {
             'This clause appears well-balanced. Maintain it as-is during negotiations.',
           explanationAmharic:
             'ይህ አንቀጽ ሚዛናዊ እና ፍትሃዊ ቋንቋ ይዟል። በተመጣጣኝ ውሎች እና የጋራ ኃላፊነት ፍላጎትዎን ይጠብቃል።',
-          suggestionAmharic:
-            'ይህ አንቀጽ ሚዛናዊ ነው። በድርድር ጊዜ እንዳለ እንዲቆይ ያድርጉ።',
+          suggestionAmharic: 'ይህ አንቀጽ ሚዛናዊ ነው። በድርድር ጊዜ እንዳለ እንዲቆይ ያድርጉ።',
           severity: 2,
         };
       }
@@ -172,9 +176,7 @@ export class MockAiProvider extends AiProvider {
       recommendations,
       recommendationsAmharic: [
         ...(badClauses.length > 0
-          ? [
-              `በተገኙት ${badClauses.length} የማይመቹ አንቀጾች ላይ መደራደር ወይም የህግ ምክር ይጠይቁ`,
-            ]
+          ? [`በተገኙት ${badClauses.length} የማይመቹ አንቀጾች ላይ መደራደር ወይም የህግ ምክር ይጠይቁ`]
           : []),
         'ሙሉውን ውል ጠበቃ እንዲገመግሙት ያድርጉ',
         'የመጨረሻውን የተፈረመ ውል ቅጂ ለመዛግብት ያስቀምጡ',
@@ -201,10 +203,17 @@ export class AiService implements OnModuleInit {
     const groqKey = this.configService.get<string>('GROQ_API_KEY');
     if (groqKey) {
       this.provider = new GroqAiProvider(this.configService);
-      const model = this.configService.get<string>('GROQ_MODEL', 'llama-3.3-70b-versatile');
-      this.logger.log(`AI Service initialized with Groq provider (model: ${model})`);
+      const model = this.configService.get<string>(
+        'GROQ_MODEL',
+        'llama-3.3-70b-versatile',
+      );
+      this.logger.log(
+        `AI Service initialized with Groq provider (model: ${model})`,
+      );
     } else {
-      this.logger.log('AI Service initialized with Mock provider (set GROQ_API_KEY for real AI)');
+      this.logger.log(
+        'AI Service initialized with Mock provider (set GROQ_API_KEY for real AI)',
+      );
     }
   }
 
