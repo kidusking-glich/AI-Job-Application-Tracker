@@ -1,0 +1,11 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "functions": {
+    "dist/main.js": {
+      "includeFiles": "frontend/dist/**"
+    },
+    "src/main.ts": {
+      "includeFiles": "frontend/dist/**"
+    }
+  }
+}
