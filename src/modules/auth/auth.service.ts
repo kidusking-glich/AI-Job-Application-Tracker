@@ -106,7 +106,6 @@ export class AuthService {
     return {
       access_token: token,
       user: result,
-      message: 'Account created successfully. You are now signed in.',
     };
   }
 

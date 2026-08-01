@@ -153,10 +153,11 @@ describe('AuthService signup auto-verification', () => {
       }),
     });
     expect(result.user.emailVerifiedAt).toBeInstanceOf(Date);
-    expect(result.message).toContain('signed in');
     // Auto-sign-in: the backend issues a session token right away.
     expect(result.access_token).toBe('mocked-token');
     expect(result).not.toHaveProperty('devVerificationUrl');
+    // No redundant message field: the frontend toasts its own text.
+    expect(result).not.toHaveProperty('message');
     // The auto-sign-in is recorded in the security log like LOGIN_SUCCESS.
     expect(securityLog.log).toHaveBeenCalledWith(
       expect.objectContaining({
