@@ -9,6 +9,7 @@ describe('JwtStrategy token versioning', () => {
     get: jest.fn((key: string, defaultValue?: string) =>
       key === 'JWT_SECRET' ? 'test-secret' : defaultValue,
     ),
+    getOrThrow: jest.fn(() => 'test-secret'),
   } as any;
 
   function makeUser(overrides: Record<string, unknown> = {}) {
